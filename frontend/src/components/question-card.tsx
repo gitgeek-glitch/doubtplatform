@@ -89,20 +89,17 @@ export default function QuestionCard({ question }: QuestionCardProps) {
   const truncatedContent = question.content.length > 150 ? question.content.substring(0, 150) + "..." : question.content
 
   return (
-    <Card className="overflow-hidden border-gray-800 bg-gray-900/50 hover:bg-gray-900/80 transition-colors duration-300">
+    <Card className="question-card">
       <CardHeader className="p-4 pb-0">
         <div className="flex justify-between items-start gap-4">
-          <Link
-            to={`/question/${question._id}`}
-            className="text-xl font-semibold hover:text-purple-400 transition-colors"
-          >
+          <Link to={`/question/${question._id}`} className="question-card-title">
             {question.title}
           </Link>
           <div className="flex flex-col items-center gap-1 min-w-[60px]">
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-8 w-8 rounded-full", votes.userVote === 1 && "text-purple-400")}
+              className={cn("question-card-vote-button", votes.userVote === 1 && "question-card-vote-button-up")}
               onClick={() => handleVote("up")}
             >
               <ArrowUp className="h-5 w-5" />
@@ -111,7 +108,7 @@ export default function QuestionCard({ question }: QuestionCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-8 w-8 rounded-full", votes.userVote === -1 && "text-red-400")}
+              className={cn("question-card-vote-button", votes.userVote === -1 && "question-card-vote-button-down")}
               onClick={() => handleVote("down")}
             >
               <ArrowDown className="h-5 w-5" />
@@ -124,7 +121,7 @@ export default function QuestionCard({ question }: QuestionCardProps) {
         <div className="flex flex-wrap gap-2 mb-3">
           {question.tags.map((tag) => (
             <Link to={`/?tag=${tag}`} key={tag}>
-              <Badge variant="outline" className="bg-gray-800/50 hover:bg-gray-800 border-gray-700">
+              <Badge variant="outline" className="question-card-tag">
                 {tag}
               </Badge>
             </Link>

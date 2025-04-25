@@ -51,7 +51,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
           }
           
           return (
-            <code className="bg-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
+            <code className="markdown-code" {...props}>
               {children}
             </code>
           )
@@ -59,21 +59,21 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
         a: ({ node, ...props }) => (
           <a
             {...props}
-            className="text-purple-400 hover:text-purple-300 no-underline hover:underline"
+            className="markdown-link"
             target="_blank"
             rel="noopener noreferrer"
           />
         ),
-        img: ({ node, ...props }) => <img {...props} className="rounded-lg max-w-full h-auto my-4" />,
+        img: ({ node, ...props }) => <img {...props} className="markdown-image" />,
         table: ({ node, ...props }) => (
-          <div className="overflow-x-auto my-4">
-            <table {...props} className="border-collapse w-full" />
+          <div className="markdown-table-container">
+            <table {...props} className="markdown-table" />
           </div>
         ),
         th: ({ node, ...props }) => (
-          <th {...props} className="border border-gray-700 px-4 py-2 text-left bg-gray-800" />
+          <th {...props} className="markdown-th" />
         ),
-        td: ({ node, ...props }) => <td {...props} className="border border-gray-700 px-4 py-2" />,
+        td: ({ node, ...props }) => <td {...props} className="markdown-td" />,
       }}
     >
       {content}

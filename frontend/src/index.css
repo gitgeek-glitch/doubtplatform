@@ -1,50 +1,973 @@
+/* @plugins tailwindcss */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 0 0% 0%;
-  --foreground: 0 0% 100%;
-  --card: 0 0% 4%;
-  --card-foreground: 0 0% 100%;
-  --popover: 0 0% 4%;
-  --popover-foreground: 0 0% 100%;
-  --primary: 267 100% 60%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 240 4% 16%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 240 4% 16%;
-  --muted-foreground: 240 5% 65%;
-  --accent: 240 4% 16%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 63% 31%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 240 4% 16%;
-  --input: 240 4% 16%;
-  --ring: 267 100% 60%;
-  --radius: 0.5rem;
+@layer base {
+  :root {
+    /* Dark theme is the default */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 267 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 267 100% 60%;
+    --radius: 0.5rem;
+  }
+
+  /* Light mode class properly applied to :root when .light class is added */
+  :root.light {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 267 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 267 100% 50%;
+  }
 }
 
-.light {
-  --background: 0 0% 100%;
-  --foreground: 0 0% 3.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 3.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 3.9%;
-  --primary: 267 100% 60%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 96.1%;
-  --secondary-foreground: 0 0% 9%;
-  --muted: 0 0% 96.1%;
-  --muted-foreground: 0 0% 45.1%;
-  --accent: 0 0% 96.1%;
-  --accent-foreground: 0 0% 9%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 89.8%;
-  --input: 0 0% 89.8%;
-  --ring: 267 100% 60%;
+/* Enhanced styling for overall website aesthetics */
+@layer components {
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-indigo-500;
+  }
+
+  /* Custom button styles */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center rounded-md px-4 py-2 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+
+  .btn-gradient {
+    @apply bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-md px-4 py-2 font-medium shadow-md hover:shadow-lg transition-all;
+  }
+
+  /* Card styling */
+  .card-fancy {
+    @apply bg-card text-card-foreground rounded-lg border border-border/50 p-4 shadow-sm transition-all hover:shadow-md;
+  }
+
+  /* Input styling */
+  .input-fancy {
+    @apply rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  /* Glass effect containers */
+  .glass-container {
+    @apply bg-background/30 backdrop-blur-md border border-border/30 rounded-lg shadow-sm;
+  }
+
+  /* Button Component Styles */
+  .button-base {
+    @apply inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background;
+  }
+
+  .button-default {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+
+  .button-destructive {
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
+  }
+
+  .button-outline {
+    @apply border border-input hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .button-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+  }
+
+  .button-ghost {
+    @apply hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .button-link {
+    @apply underline-offset-4 hover:underline text-primary;
+  }
+
+  .button-size-default {
+    @apply h-10 py-2 px-4;
+  }
+
+  .button-size-sm {
+    @apply h-9 px-3 rounded-md;
+  }
+
+  .button-size-lg {
+    @apply h-11 px-8 rounded-md;
+  }
+
+  .button-size-icon {
+    @apply h-10 w-10;
+  }
+
+  /* Label Component Styles */
+  .label {
+    @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70;
+  }
+
+  /* Separator Component Styles */
+  .separator {
+    @apply shrink-0 bg-border;
+  }
+
+  .separator-horizontal {
+    @apply h-[1px] w-full;
+  }
+
+  .separator-vertical {
+    @apply h-full w-[1px];
+  }
+
+  /* Card Component Styles */
+  .card {
+    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+  }
+
+  .card-header {
+    @apply flex flex-col space-y-1.5 p-6;
+  }
+
+  .card-title {
+    @apply text-2xl font-semibold leading-none tracking-tight;
+  }
+
+  .card-description {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .card-content {
+    @apply p-6 pt-0;
+  }
+
+  .card-footer {
+    @apply flex items-center p-6 pt-0;
+  }
+
+  /* Avatar Component Styles */
+  .avatar {
+    @apply relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full;
+  }
+
+  .avatar-image {
+    @apply aspect-square h-full w-full;
+  }
+
+  .avatar-fallback {
+    @apply flex h-full w-full items-center justify-center rounded-full bg-muted;
+  }
+
+  /* Select Component Styles */
+  .select-trigger {
+    @apply flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .select-value {
+    @apply block truncate;
+  }
+
+  .select-content {
+    @apply absolute z-50 top-full mt-1 min-w-[8rem] w-full overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md;
+  }
+
+  .select-item {
+    @apply relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .select-item-selected {
+    @apply bg-accent;
+  }
+
+  .select-item-check {
+    @apply absolute left-2 flex h-3.5 w-3.5 items-center justify-center;
+  }
+
+  /* Input Component Styles */
+  .input {
+    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Dropdown Menu Component Styles */
+  .dropdown-menu-content {
+    @apply z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md absolute mt-2;
+  }
+
+  .dropdown-menu-content-start {
+    @apply origin-top-left left-0;
+  }
+
+  .dropdown-menu-content-end {
+    @apply origin-top-right right-0;
+  }
+
+  .dropdown-menu-item {
+    @apply relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .dropdown-menu-separator {
+    @apply -mx-1 my-1 h-px bg-muted;
+  }
+
+  /* Badge Component Styles */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  .badge-default {
+    @apply bg-primary text-primary-foreground hover:bg-primary/80;
+  }
+
+  .badge-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+  }
+
+  .badge-destructive {
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/80;
+  }
+
+  .badge-outline {
+    @apply text-foreground border border-input hover:bg-accent hover:text-accent-foreground;
+  }
+
+  /* Tabs Component Styles */
+  .tabs-list {
+    @apply inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground;
+  }
+
+  .tabs-trigger {
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .tabs-trigger-active {
+    @apply bg-background text-foreground shadow-sm;
+  }
+
+  .tabs-trigger-inactive {
+    @apply hover:bg-muted hover:text-muted-foreground;
+  }
+
+  .tabs-content {
+    @apply mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  /* Textarea Component Styles */
+  .textarea {
+    @apply flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Skeleton Component Styles */
+  .skeleton {
+    @apply animate-pulse rounded-md bg-muted;
+  }
+
+  /* Toaster Component Styles */
+  .toaster-container {
+    @apply fixed bottom-4 right-4 z-50 flex flex-col gap-2;
+  }
+
+  .toast {
+    @apply rounded-lg p-4 shadow-lg;
+  }
+
+  .toast-default {
+    @apply bg-gray-800;
+  }
+
+  .toast-destructive {
+    @apply bg-red-600;
+  }
+
+  .toast-title {
+    @apply font-medium;
+  }
+
+  .toast-description {
+    @apply text-sm text-gray-300;
+  }
+
+  /* Question Card Component Styles */
+  .question-card {
+    @apply overflow-hidden border-gray-800 bg-gray-900/50 hover:bg-gray-900/80 transition-colors duration-300;
+  }
+
+  .question-card-title {
+    @apply text-xl font-semibold hover:text-purple-400 transition-colors;
+  }
+
+  .question-card-vote-button {
+    @apply h-8 w-8 rounded-full;
+  }
+
+  .question-card-vote-button-up {
+    @apply text-purple-400;
+  }
+
+  .question-card-vote-button-down {
+    @apply text-red-400;
+  }
+
+  .question-card-tag {
+    @apply bg-gray-800/50 hover:bg-gray-800 border-gray-700;
+  }
+
+  /* Navbar Component Styles */
+  .navbar {
+    @apply sticky top-0 z-50 w-full backdrop-blur-lg transition-all duration-300;
+  }
+
+  .navbar-scrolled {
+    @apply border-b bg-black/90 shadow-md dark:border-purple-900/20 dark:bg-gray-950/90;
+  }
+
+  .navbar-transparent {
+    @apply bg-transparent;
+  }
+
+  .navbar-container {
+    @apply container mx-auto flex h-16 items-center justify-between px-4;
+  }
+
+  .navbar-logo {
+    @apply flex items-center gap-2 transition-transform hover:scale-105;
+  }
+
+  .navbar-logo-icon {
+    @apply flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600;
+  }
+
+  .navbar-logo-text {
+    @apply text-xl font-extrabold bg-gradient-to-r from-purple-500 to-indigo-400 bg-clip-text text-transparent;
+  }
+
+  .navbar-search {
+    @apply hidden md:flex relative;
+  }
+
+  .navbar-search-input {
+    @apply w-[300px] rounded-full border-0 bg-gray-800/50 px-4 py-2 pl-10 text-sm backdrop-blur-sm transition-all
+           focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-0
+           group-hover:bg-gray-800/70 dark:placeholder:text-gray-400;
+  }
+
+  .navbar-search-icon {
+    @apply absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400;
+  }
+
+  .navbar-theme-toggle {
+    @apply hidden h-9 w-9 rounded-full bg-gray-800/50 text-gray-300 hover:bg-gray-800 md:flex;
+  }
+
+  .navbar-notification {
+    @apply hidden h-9 w-9 rounded-full bg-gray-800/50 text-gray-300 hover:bg-gray-800 md:flex relative;
+  }
+
+  .navbar-notification-badge {
+    @apply absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-[10px] font-bold text-white;
+  }
+
+  .navbar-button {
+    @apply hidden md:flex bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-full px-5 text-sm font-medium shadow-md hover:shadow-lg transition-all;
+  }
+
+  .navbar-avatar-container {
+    @apply flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 border-purple-500/50 transition-all hover:border-purple-500;
+  }
+
+  .navbar-dropdown {
+    @apply w-56 mt-1 rounded-xl border border-gray-800/50 bg-gray-900/95 p-1 backdrop-blur-lg;
+  }
+
+  .navbar-dropdown-user {
+    @apply flex items-center justify-start gap-2 rounded-lg p-2 hover:bg-gray-800/50;
+  }
+
+  .navbar-dropdown-item {
+    @apply rounded-lg flex cursor-pointer items-center p-2 text-sm hover:bg-gray-800/50;
+  }
+
+  .navbar-dropdown-item-danger {
+    @apply rounded-lg flex cursor-pointer items-center p-2 text-sm text-red-400 hover:bg-gray-800/50 hover:text-red-300;
+  }
+
+  .navbar-mobile-toggle {
+    @apply md:hidden h-9 w-9 rounded-full bg-gray-800/50 text-gray-300 hover:bg-gray-800;
+  }
+
+  .navbar-mobile-menu {
+    @apply md:hidden fixed inset-0 top-16 z-50 bg-black/95 backdrop-blur-md animate-in fade-in;
+  }
+
+  .navbar-mobile-container {
+    @apply flex h-full flex-col p-6;
+  }
+
+  .navbar-mobile-search {
+    @apply relative mb-6;
+  }
+
+  .navbar-mobile-search-input {
+    @apply w-full rounded-full border-0 bg-gray-800/70 px-4 py-3 pl-10 text-sm backdrop-blur-sm
+           focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-0;
+  }
+
+  .navbar-mobile-button {
+    @apply w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-full py-6 text-base font-medium;
+  }
+
+  .navbar-mobile-user {
+    @apply mt-4 flex items-center gap-3 px-2;
+  }
+
+  .navbar-mobile-menu-item {
+    @apply w-full justify-start rounded-lg bg-gray-800/30 py-5 hover:bg-gray-800/70;
+  }
+
+  /* Markdown Renderer Component Styles */
+  .markdown-code {
+    @apply bg-gray-800 px-1.5 py-0.5 rounded text-sm;
+  }
+
+  .markdown-link {
+    @apply text-purple-400 hover:text-purple-300 no-underline hover:underline;
+  }
+
+  .markdown-image {
+    @apply rounded-lg max-w-full h-auto my-4;
+  }
+
+  .markdown-table-container {
+    @apply overflow-x-auto my-4;
+  }
+
+  .markdown-table {
+    @apply border-collapse w-full;
+  }
+
+  .markdown-th {
+    @apply border border-gray-700 px-4 py-2 text-left bg-gray-800;
+  }
+
+  .markdown-td {
+    @apply border border-gray-700 px-4 py-2;
+  }
+
+  /* Theme Toggle Component Styles */
+  .theme-toggle {
+    @apply fixed bottom-4 right-4 z-50 rounded-md bg-background text-foreground border border-border p-2 shadow-md;
+  }
+
+  /* Add these new component styles to the @layer components section, before the closing brace */
+
+  /* Ask Question Page Styles */
+  .ask-question-container {
+    @apply max-w-3xl mx-auto;
+  }
+
+  .ask-question-title {
+    @apply text-3xl font-bold mb-6;
+  }
+
+  .ask-question-form {
+    @apply space-y-6;
+  }
+
+  .ask-question-field {
+    @apply space-y-2;
+  }
+
+  .ask-question-label {
+    @apply text-sm font-medium;
+  }
+
+  .ask-question-input {
+    @apply bg-gray-900 border-gray-800;
+  }
+
+  .ask-question-tag-container {
+    @apply flex flex-wrap gap-2 mt-2;
+  }
+
+  .ask-question-tag {
+    @apply bg-gray-800 hover:bg-gray-700 gap-1;
+  }
+
+  .ask-question-tag-remove {
+    @apply ml-1 rounded-full hover:bg-gray-600 p-0.5;
+  }
+
+  .ask-question-tabs {
+    @apply w-full;
+  }
+
+  .ask-question-tabs-list {
+    @apply grid grid-cols-2 bg-gray-900;
+  }
+
+  .ask-question-tab-active {
+    @apply bg-purple-600;
+  }
+
+  .ask-question-content {
+    @apply min-h-[300px] bg-gray-900 border-gray-800;
+  }
+
+  .ask-question-preview {
+    @apply min-h-[300px] p-4 border rounded-md border-gray-800 bg-gray-900;
+  }
+
+  .ask-question-hint {
+    @apply text-xs text-muted-foreground mt-2;
+  }
+
+  .ask-question-submit {
+    @apply bg-purple-600 hover:bg-purple-700;
+  }
+
+  /* Question Detail Page Styles */
+  .question-detail-grid {
+    @apply grid grid-cols-1 lg:grid-cols-4 gap-8;
+  }
+
+  .question-detail-main {
+    @apply lg:col-span-3 space-y-8;
+  }
+
+  .question-detail-header {
+    @apply flex flex-col md:flex-row justify-between md:items-center gap-4;
+  }
+
+  .question-detail-title {
+    @apply text-2xl md:text-3xl font-bold;
+  }
+
+  .question-detail-share {
+    @apply w-fit border-gray-800;
+  }
+
+  .question-detail-vote-container {
+    @apply flex flex-col items-center gap-1;
+  }
+
+  .question-detail-vote-button {
+    @apply h-10 w-10 rounded-full;
+  }
+
+  .question-detail-vote-up {
+    @apply text-purple-400;
+  }
+
+  .question-detail-vote-down {
+    @apply text-red-400;
+  }
+
+  .question-detail-vote-count {
+    @apply font-medium text-xl;
+  }
+
+  .question-detail-content {
+    @apply flex-1;
+  }
+
+  .question-detail-author {
+    @apply flex justify-end mt-6;
+  }
+
+  .question-detail-author-card {
+    @apply flex items-center gap-2 bg-gray-800/50 rounded-lg p-3;
+  }
+
+  .question-detail-author-info {
+    @apply text-right text-sm;
+  }
+
+  .question-detail-author-link {
+    @apply font-medium hover:text-purple-400;
+  }
+
+  .question-detail-answers-header {
+    @apply text-xl font-semibold flex items-center gap-2;
+  }
+
+  .question-detail-answer {
+    @apply p-6 rounded-lg;
+  }
+
+  .question-detail-answer-accepted {
+    @apply bg-green-900/20 border border-green-800;
+  }
+
+  .question-detail-accept-button {
+    @apply mt-2 text-muted-foreground hover:text-green-500;
+  }
+
+  .question-detail-accepted-indicator {
+    @apply mt-2 text-green-500 flex flex-col items-center;
+  }
+
+  .question-detail-no-answers {
+    @apply text-center p-8 border border-dashed border-gray-800 rounded-lg;
+  }
+
+  .question-detail-answer-form {
+    @apply space-y-4;
+  }
+
+  .question-detail-answer-textarea {
+    @apply min-h-[200px] bg-gray-900 border-gray-800;
+  }
+
+  .question-detail-sidebar {
+    @apply space-y-6;
+  }
+
+  .question-detail-sidebar-card {
+    @apply bg-gray-900/50 rounded-lg border border-gray-800 p-4;
+  }
+
+  .question-detail-sidebar-title {
+    @apply font-medium mb-3;
+  }
+
+  .question-detail-related-list {
+    @apply space-y-3;
+  }
+
+  .question-detail-related-link {
+    @apply text-sm hover:text-purple-400 block;
+  }
+
+  .question-detail-related-meta {
+    @apply flex items-center gap-2 mt-1;
+  }
+
+  .question-detail-tag-cloud {
+    @apply flex flex-wrap gap-2;
+  }
+
+  /* Not Found Page Styles */
+  .not-found-container {
+    @apply flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] text-center;
+  }
+
+  .not-found-code {
+    @apply text-9xl font-bold text-purple-600;
+  }
+
+  .not-found-title {
+    @apply text-3xl font-bold mt-4;
+  }
+
+  .not-found-message {
+    @apply text-muted-foreground mt-2 max-w-md;
+  }
+
+  .not-found-button {
+    @apply mt-8 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white;
+  }
+
+  /* Auth Page Styles */
+  .auth-container {
+    @apply flex items-center justify-center min-h-[calc(100vh-16rem)];
+  }
+
+  .auth-card {
+    @apply w-full max-w-md space-y-8 p-8 rounded-xl border border-gray-800 bg-gray-900/50 backdrop-blur-sm;
+  }
+
+  .auth-header {
+    @apply text-center;
+  }
+
+  .auth-title {
+    @apply text-3xl font-bold;
+  }
+
+  .auth-subtitle {
+    @apply text-muted-foreground mt-2;
+  }
+
+  .auth-tabs-list {
+    @apply grid grid-cols-2 w-full bg-gray-800;
+  }
+
+  .auth-tab-active {
+    @apply bg-purple-600;
+  }
+
+  .auth-form {
+    @apply space-y-4;
+  }
+
+  .auth-field {
+    @apply space-y-2;
+  }
+
+  .auth-input {
+    @apply bg-gray-800 border-gray-700;
+  }
+
+  .auth-hint {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .auth-submit {
+    @apply w-full bg-purple-600 hover:bg-purple-700;
+  }
+
+  /* Profile Page Styles */
+  .profile-header-banner {
+    @apply h-48 rounded-xl bg-gradient-to-r from-purple-900 to-indigo-900;
+  }
+
+  .profile-header-content {
+    @apply flex flex-col md:flex-row gap-6 items-start -mt-16 md:px-6;
+  }
+
+  .profile-avatar {
+    @apply h-32 w-32 border-4 border-black;
+  }
+
+  .profile-info {
+    @apply space-y-4 flex-1 pt-16 md:pt-0;
+  }
+
+  .profile-name-row {
+    @apply flex flex-col md:flex-row justify-between items-start md:items-center gap-4;
+  }
+
+  .profile-name {
+    @apply text-3xl font-bold;
+  }
+
+  .profile-username {
+    @apply text-muted-foreground;
+  }
+
+  .profile-edit-button {
+    @apply border-gray-800;
+  }
+
+  .profile-bio {
+    @apply text-muted-foreground;
+  }
+
+  .profile-stats {
+    @apply flex flex-wrap gap-4;
+  }
+
+  .profile-stat {
+    @apply flex items-center gap-2 bg-gray-900/50 px-4 py-2 rounded-lg;
+  }
+
+  .profile-stat-icon {
+    @apply h-5 w-5 text-purple-400;
+  }
+
+  .profile-stat-value {
+    @apply font-medium;
+  }
+
+  .profile-stat-label {
+    @apply text-muted-foreground;
+  }
+
+  .profile-badges {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .profile-badge-gold {
+    @apply bg-yellow-600 hover:bg-yellow-600;
+  }
+
+  .profile-badge-silver {
+    @apply bg-gray-400 hover:bg-gray-400;
+  }
+
+  .profile-badge-bronze {
+    @apply bg-amber-700 hover:bg-amber-700;
+  }
+
+  .profile-tabs-list {
+    @apply grid grid-cols-2 w-full max-w-md bg-gray-900;
+  }
+
+  .profile-tab-active {
+    @apply bg-purple-600;
+  }
+
+  .profile-content {
+    @apply mt-6 space-y-4;
+  }
+
+  .profile-empty-state {
+    @apply text-center p-8 border border-dashed border-gray-800 rounded-lg;
+  }
+
+  .profile-answer-card {
+    @apply border border-gray-800 rounded-lg p-6 bg-gray-900/50;
+  }
+
+  .profile-answer-title {
+    @apply text-lg font-medium hover:text-purple-400;
+  }
+
+  .profile-answer-content {
+    @apply prose prose-invert max-w-none line-clamp-3 mb-4;
+  }
+
+  .profile-answer-meta {
+    @apply flex justify-between items-center;
+  }
+
+  .profile-answer-stats {
+    @apply flex items-center gap-2;
+  }
+
+  .profile-answer-badge {
+    @apply bg-gray-800 border-gray-700;
+  }
+
+  .profile-answer-accepted {
+    @apply bg-green-700 hover:bg-green-700;
+  }
+
+  /* Home Page Styles */
+  .home-header {
+    @apply flex flex-col md:flex-row justify-between items-start md:items-center gap-4;
+  }
+
+  .home-title {
+    @apply text-3xl font-bold tracking-tight;
+  }
+
+  .home-subtitle {
+    @apply text-muted-foreground mt-1;
+  }
+
+  .home-filters {
+    @apply flex flex-col sm:flex-row gap-2 w-full md:w-auto;
+  }
+
+  .home-category-select {
+    @apply w-full sm:w-[180px] bg-gray-900 border-gray-800;
+  }
+
+  .home-tabs {
+    @apply w-full sm:w-auto;
+  }
+
+  .home-tabs-list {
+    @apply grid grid-cols-3 w-full sm:w-[300px] bg-gray-900;
+  }
+
+  .home-tab-active {
+    @apply bg-purple-600;
+  }
+
+  .home-empty-state {
+    @apply flex flex-col items-center justify-center p-12 text-center border border-dashed border-gray-800 rounded-lg;
+  }
+
+  .home-empty-title {
+    @apply text-xl font-semibold mb-2;
+  }
+
+  .home-empty-message {
+    @apply text-muted-foreground mb-4;
+  }
+
+  .home-load-more {
+    @apply flex justify-center pt-4;
+  }
+
+  .home-load-more-button {
+    @apply border-gray-800 hover:bg-gray-800;
+  }
+
+  /* Light mode overrides for all components */
+  :root.light .ask-question-input,
+  :root.light .ask-question-content,
+  :root.light .ask-question-preview,
+  :root.light .ask-question-tabs-list {
+    @apply bg-gray-100 border-gray-300;
+  }
+
+  :root.light .ask-question-tag {
+    @apply bg-gray-200 hover:bg-gray-300 border-gray-300;
+  }
+
+  :root.light .ask-question-tag-remove {
+    @apply hover:bg-gray-400;
+  }
+
+  :root.light .question-detail-share,
+  :root.light .profile-edit-button,
+  :root.light .home-load-more-button {
+    @apply border-gray-300;
+  }
+
+  :root.light .question-detail-author-card,
+  :root.light .profile-stat {
+    @apply bg-gray-100/50;
+  }
+
+  :root.light .question-detail-answer-accepted {
+    @apply bg-green-100/50 border-green-300;
+  }
+
+  :root.light .question-detail-no-answers,
+  :root.light .profile-empty-state,
+  :root.light .home-empty-state {
+    @apply border-gray-300;
+  }
+
+  :root.light .question-detail-sidebar-card,
+  :root.light .profile-answer-card,
+  :root.light .auth-card {
+    @apply bg-white/50 border-gray-300;
+  }
+
+  :root.light .auth-tabs-list,
+  :root.light .profile-tabs-list,
+  :root.light .home-tabs-list,
+  :root.light .home-category-select {
+    @apply bg-gray-100 border-gray-300;
+  }
+
+  :root.light .auth-input {
+    @apply bg-white border-gray-300;
+  }
+
+  :root.light .question-detail-answer-textarea {
+    @apply bg-white border-gray-300;
+  }
 }
 
 body {
@@ -52,7 +975,56 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-/* Locomotive Scroll Styles */
+/* Improved scroll behavior */
+html {
+  @apply scroll-smooth;
+}
+
+/* Animation classes */
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.slide-up {
+  animation: slideUp 0.5s ease-in-out;
+}
+
+.slide-down {
+  animation: slideDown 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Improved Locomotive Scroll Styles */
 html.has-scroll-smooth {
   overflow: hidden;
 }
@@ -106,11 +1078,12 @@ html.has-scroll-dragging {
   opacity: 1;
 }
 
+/* Themed scrollbar thumb based on current theme */
 .c-scrollbar_thumb {
   position: absolute;
   top: 0;
   right: 0;
-  background-color: rgba(111, 76, 255, 0.5);
+  background-color: hsl(var(--primary) / 0.5);
   opacity: 0.5;
   width: 7px;
   border-radius: 10px;
@@ -120,4 +1093,119 @@ html.has-scroll-dragging {
 
 .has-scroll-dragging .c-scrollbar_thumb {
   cursor: grabbing;
+}
+
+/* Custom scrollbar for browsers */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.7);
+}
+
+/* Light mode specific overrides */
+:root.light .btn-primary,
+:root.light .btn-gradient {
+  @apply text-white border border-primary/20;
+}
+
+:root.light .card-fancy {
+  @apply shadow-md border-border;
+}
+
+:root.light .glass-container {
+  @apply bg-background/80 border-border/50;
+}
+
+/* Ensure proper contrast for scrollbars in light mode */
+:root.light ::-webkit-scrollbar-track {
+  background: hsl(var(--background) / 0.8);
+}
+
+:root.light ::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.7);
+  border-radius: 5px;
+}
+
+:root.light ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.9);
+}
+
+/* Ensure proper contrast for locomotive scrollbar in light mode */
+:root.light .c-scrollbar_thumb {
+  background-color: hsl(var(--primary) / 0.7);
+  opacity: 0.7;
+}
+
+/* Light mode overrides for additional components */
+:root.light .question-card {
+  @apply border-gray-200 bg-white/50 hover:bg-white/80;
+}
+
+:root.light .question-card-tag {
+  @apply bg-gray-100/80 hover:bg-gray-200 border-gray-300;
+}
+
+:root.light .navbar-search-input {
+  @apply bg-gray-100/50 group-hover:bg-gray-200/70 placeholder:text-gray-500;
+}
+
+:root.light .navbar-theme-toggle,
+:root.light .navbar-notification,
+:root.light .navbar-mobile-toggle {
+  @apply bg-gray-100/50 text-gray-700 hover:bg-gray-200;
+}
+
+:root.light .navbar-dropdown {
+  @apply border-gray-200/50 bg-white/95;
+}
+
+:root.light .navbar-dropdown-item {
+  @apply hover:bg-gray-100/50;
+}
+
+:root.light .navbar-dropdown-item-danger {
+  @apply hover:bg-gray-100/50;
+}
+
+:root.light .navbar-mobile-menu {
+  @apply bg-white/95;
+}
+
+:root.light .navbar-mobile-search-input {
+  @apply bg-gray-100/70;
+}
+
+:root.light .navbar-mobile-menu-item {
+  @apply bg-gray-100/30 hover:bg-gray-200/70;
+}
+
+:root.light .markdown-code {
+  @apply bg-gray-100;
+}
+
+:root.light .markdown-th {
+  @apply border-gray-300 bg-gray-100;
+}
+
+:root.light .markdown-td {
+  @apply border-gray-300;
+}
+
+:root.light .toast-default {
+  @apply bg-white text-gray-800;
+}
+
+:root.light .toast-description {
+  @apply text-gray-600;
 }

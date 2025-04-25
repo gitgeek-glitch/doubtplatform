@@ -12,6 +12,7 @@ import AuthPage from "@/pages/auth"
 import { AuthProvider } from "@/context/auth-context"
 import { LocomotiveScrollProvider } from "@/context/locomotive-context"
 import NotFound from "@/pages/not-found"
+import { ThemeToggle } from "./components/theme-toggle"
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
           </LocomotiveScrollProvider>
         </AuthProvider>
       </Router>
+      <ThemeToggle/>
     </ThemeProvider>
   )
 }

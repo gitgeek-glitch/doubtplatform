@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 export default function AuthPage() {
   const navigate = useNavigate()
@@ -123,26 +124,32 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-16rem)]">
-      <div className="w-full max-w-md space-y-8 p-8 rounded-xl border border-gray-800 bg-gray-900/50 backdrop-blur-sm">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Welcome to DoubtSolve</h1>
-          <p className="text-muted-foreground mt-2">Your college doubt-solving platform</p>
+    <div className="auth-container">
+      <div className="auth-card">
+        <div className="auth-header">
+          <h1 className="auth-title">Welcome to DoubtSolve</h1>
+          <p className="auth-subtitle">Your college doubt-solving platform</p>
         </div>
 
         <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-2 w-full bg-gray-800">
-            <TabsTrigger value="login" className="data-[state=active]:bg-purple-600">
+          <TabsList className="auth-tabs-list">
+            <TabsTrigger 
+              value="login" 
+              className={cn(activeTab === "login" && "auth-tab-active")}
+            >
               Login
             </TabsTrigger>
-            <TabsTrigger value="register" className="data-[state=active]:bg-purple-600">
+            <TabsTrigger 
+              value="register" 
+              className={cn(activeTab === "register" && "auth-tab-active")}
+            >
               Register
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="login" className="mt-6">
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
+            <form onSubmit={handleLogin} className="auth-form">
+              <div className="auth-field">
                 <Label htmlFor="email">College Email</Label>
                 <Input
                   id="email"
@@ -150,13 +157,13 @@ export default function AuthPage() {
                   placeholder="studentname.is22@bmsce.ac.in"
                   value={loginEmail}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginEmail(e.target.value)}
-                  className="bg-gray-800 border-gray-700"
+                  className="auth-input"
                   autoComplete="username"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="auth-field">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
                   <Button variant="link" className="p-0 h-auto text-xs text-purple-400">
@@ -169,33 +176,33 @@ export default function AuthPage() {
                   placeholder="••••••••"
                   value={loginPassword}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginPassword(e.target.value)}
-                  className="bg-gray-800 border-gray-700"
+                  className="auth-input"
                   required
                   autoComplete="current-password"
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loggingIn}>
+              <Button type="submit" className="auth-submit" disabled={loggingIn}>
                 {loggingIn ? "Signing in..." : "Sign In"}
               </Button>
             </form>
           </TabsContent>
 
           <TabsContent value="register" className="mt-6">
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div className="space-y-2">
+            <form onSubmit={handleRegister} className="auth-form">
+              <div className="auth-field">
                 <Label htmlFor="name">Full Name</Label>
                 <Input
                   id="name"
                   placeholder="John Doe"
                   value={registerName}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRegisterName(e.target.value)}
-                  className="bg-gray-800 border-gray-700"
+                  className="auth-input"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="auth-field">
                 <Label htmlFor="register-email">College Email</Label>
                 <Input
                   id="register-email"
@@ -203,13 +210,13 @@ export default function AuthPage() {
                   placeholder="studentname.is22@bmsce.ac.in"
                   value={registerEmail}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRegisterEmail(e.target.value)}
-                  className="bg-gray-800 border-gray-700"
+                  className="auth-input"
                   required
                 />
-                <p className="text-xs text-muted-foreground">Must be your institutional email ending with .ac.in</p>
+                <p className="auth-hint">Must be your institutional email ending with .ac.in</p>
               </div>
 
-              <div className="space-y-2">
+              <div className="auth-field">
                 <Label htmlFor="register-password">Password</Label>
                 <Input
                   id="register-password"
@@ -217,13 +224,13 @@ export default function AuthPage() {
                   placeholder="••••••••"
                   value={registerPassword}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRegisterPassword(e.target.value)}
-                  className="bg-gray-800 border-gray-700"
+                  className="auth-input"
                   required
                   autoComplete="new-password"
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="auth-field">
                 <Label htmlFor="confirm-password">Confirm Password</Label>
                 <Input
                   id="confirm-password"
@@ -231,13 +238,13 @@ export default function AuthPage() {
                   placeholder="••••••••"
                   value={registerConfirmPassword}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRegisterConfirmPassword(e.target.value)}
-                  className="bg-gray-800 border-gray-700"
+                  className="auth-input"
                   required
                   autoComplete="new-password"
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={registering}>
+              <Button type="submit" className="auth-submit" disabled={registering}>
                 {registering ? "Creating account..." : "Create Account"}
               </Button>
             </form>

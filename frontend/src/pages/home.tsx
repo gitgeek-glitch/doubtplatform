@@ -1,15 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MessageSquare, Clock, TrendingUp } from "lucide-react"
+import { MessageSquare, Clock, TrendingUp } from 'lucide-react'
 import { api } from "@/lib/api"
 import { useLocomotiveScroll } from "@/context/locomotive-context"
 import QuestionCard from "@/components/question-card"
+import { cn } from "@/lib/utils"
 
 interface Question {
   _id: string
@@ -32,6 +33,7 @@ export default function HomePage() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const navigate = useNavigate();
   const [hasMore, setHasMore] = useState(true)
   const [filter, setFilter] = useState("latest")
   const [category, setCategory] = useState("all")
@@ -105,21 +107,21 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6" data-scroll-section>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="home-header">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="home-title">
             {searchQuery
               ? `Search results for "${searchQuery}"`
               : tag
                 ? `Questions tagged with "${tag}"`
                 : "Explore Questions"}
           </h1>
-          <p className="text-muted-foreground mt-1">Discover and solve interesting problems from your peers</p>
+          <p className="home-subtitle">Discover and solve interesting problems from your peers</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+        <div className="home-filters">
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-full sm:w-[180px] bg-gray-900 border-gray-800">
+            <SelectTrigger className="home-category-select">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
@@ -131,17 +133,26 @@ export default function HomePage() {
             </SelectContent>
           </Select>
 
-          <Tabs defaultValue="latest" className="w-full sm:w-auto" value={filter} onValueChange={setFilter}>
-            <TabsList className="grid grid-cols-3 w-full sm:w-[300px] bg-gray-900">
-              <TabsTrigger value="latest" className="data-[state=active]:bg-purple-600">
+          <Tabs defaultValue="latest" className="home-tabs" value={filter} onValueChange={setFilter}>
+            <TabsList className="home-tabs-list">
+              <TabsTrigger 
+                value="latest" 
+                className={cn(filter === "latest" && "home-tab-active")}
+              >
                 <Clock className="h-4 w-4 mr-2" />
                 Latest
               </TabsTrigger>
-              <TabsTrigger value="trending" className="data-[state=active]:bg-purple-600">
+              <TabsTrigger 
+                value="trending" 
+                className={cn(filter === "trending" && "home-tab-active")}
+              >
                 <TrendingUp className="h-4 w-4 mr-2" />
                 Hot
               </TabsTrigger>
-              <TabsTrigger value="unanswered" className="data-[state=active]:bg-purple-600">
+              <TabsTrigger 
+                value="unanswered" 
+                className={cn(filter === "unanswered" && "home-tab-active")}
+              >
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Unanswered
               </TabsTrigger>
@@ -178,24 +189,20 @@ export default function HomePage() {
           ))}
 
           {hasMore && (
-            <div className="flex justify-center pt-4">
-              <Button onClick={handleLoadMore} variant="outline" className="border-gray-800 hover:bg-gray-800">
+            <div className="home-load-more">
+              <Button onClick={handleLoadMore} variant="outline" className="home-load-more-button">
                 Load More
               </Button>
             </div>
           )}
         </div>
       ) : (
-        <div
-          className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-gray-800 rounded-lg"
-          data-scroll
-          data-scroll-speed="0.1"
-        >
-          <h3 className="text-xl font-semibold mb-2">No questions found</h3>
-          <p className="text-muted-foreground mb-4">
+        <div className="home-empty-state" data-scroll data-scroll-speed="0.1">
+          <h3 className="home-empty-title">No questions found</h3>
+          <p className="home-empty-message">
             {searchQuery || tag ? "Try a different search term or tag" : "Be the first to ask a question!"}
           </p>
-          <Button onClick={() => (window.location.href = "/ask")} className="bg-purple-600 hover:bg-purple-700">
+          <Button onClick={() => navigate("/ask")} className="ask-question-submit">
             Ask a Question
           </Button>
         </div>

@@ -10,4 +10,8 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  css: {
+    // Explicitly tell Vite to use PostCSS for CSS processing
+    postcss: './postcss.config.js'
+  }
 })

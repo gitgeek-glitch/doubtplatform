@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { MessageSquare, Award, Calendar, Edit, ArrowUp } from "lucide-react"
+import { MessageSquare, Award, Calendar, Edit, ArrowUp } from 'lucide-react'
 import { formatDistanceToNow } from "date-fns"
 import { api } from "@/lib/api"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import QuestionCard from "@/components/question-card"
+import { cn } from "@/lib/utils"
 
 interface User {
   _id: string
@@ -86,9 +87,9 @@ export default function ProfilePage() {
 
   // Badge colors based on level
   const getBadgeColor = (badge: string) => {
-    if (badge.includes("Gold")) return "bg-yellow-600"
-    if (badge.includes("Silver")) return "bg-gray-400"
-    if (badge.includes("Bronze")) return "bg-amber-700"
+    if (badge.includes("Gold")) return "profile-badge-gold"
+    if (badge.includes("Silver")) return "profile-badge-silver"
+    if (badge.includes("Bronze")) return "profile-badge-bronze"
     return "bg-purple-600"
   }
 
@@ -134,62 +135,62 @@ export default function ProfilePage() {
     <div className="space-y-8">
       {/* Profile header */}
       <div className="relative">
-        <div className="h-48 rounded-xl bg-gradient-to-r from-purple-900 to-indigo-900" />
+        <div className="profile-header-banner" />
 
-        <div className="flex flex-col md:flex-row gap-6 items-start -mt-16 md:px-6">
-          <Avatar className="h-32 w-32 border-4 border-black">
+        <div className="profile-header-content">
+          <Avatar className="profile-avatar">
             <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
             <AvatarFallback className="text-4xl">{user.name.charAt(0)}</AvatarFallback>
           </Avatar>
 
-          <div className="space-y-4 flex-1 pt-16 md:pt-0">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="profile-info">
+            <div className="profile-name-row">
               <div>
-                <h1 className="text-3xl font-bold">{user.name}</h1>
-                <p className="text-muted-foreground">@{user.email.split("@")[0]}</p>
+                <h1 className="profile-name">{user.name}</h1>
+                <p className="profile-username">@{user.email.split("@")[0]}</p>
               </div>
 
               {isOwnProfile && (
-                <Button variant="outline" className="border-gray-800">
+                <Button variant="outline" className="profile-edit-button">
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Profile
                 </Button>
               )}
             </div>
 
-            {user.bio && <p className="text-muted-foreground">{user.bio}</p>}
+            {user.bio && <p className="profile-bio">{user.bio}</p>}
 
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center gap-2 bg-gray-900/50 px-4 py-2 rounded-lg">
-                <Award className="h-5 w-5 text-purple-400" />
-                <span className="font-medium">{user.reputation}</span>
-                <span className="text-muted-foreground">reputation</span>
+            <div className="profile-stats">
+              <div className="profile-stat">
+                <Award className="profile-stat-icon" />
+                <span className="profile-stat-value">{user.reputation}</span>
+                <span className="profile-stat-label">reputation</span>
               </div>
 
-              <div className="flex items-center gap-2 bg-gray-900/50 px-4 py-2 rounded-lg">
-                <MessageSquare className="h-5 w-5 text-purple-400" />
-                <span className="font-medium">{user.questionsCount}</span>
-                <span className="text-muted-foreground">questions</span>
+              <div className="profile-stat">
+                <MessageSquare className="profile-stat-icon" />
+                <span className="profile-stat-value">{user.questionsCount}</span>
+                <span className="profile-stat-label">questions</span>
               </div>
 
-              <div className="flex items-center gap-2 bg-gray-900/50 px-4 py-2 rounded-lg">
-                <ArrowUp className="h-5 w-5 text-purple-400" />
-                <span className="font-medium">{user.answersCount}</span>
-                <span className="text-muted-foreground">answers</span>
+              <div className="profile-stat">
+                <ArrowUp className="profile-stat-icon" />
+                <span className="profile-stat-value">{user.answersCount}</span>
+                <span className="profile-stat-label">answers</span>
               </div>
 
-              <div className="flex items-center gap-2 bg-gray-900/50 px-4 py-2 rounded-lg">
-                <Calendar className="h-5 w-5 text-purple-400" />
-                <span className="text-muted-foreground">
+              <div className="profile-stat">
+                <Calendar className="profile-stat-icon" />
+                <span className="profile-stat-label">
                   Joined {formatDistanceToNow(new Date(user.createdAt), { addSuffix: true })}
                 </span>
               </div>
             </div>
 
             {user.badges.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="profile-badges">
                 {user.badges.map((badge, index) => (
-                  <Badge key={index} className={`${getBadgeColor(badge)} hover:${getBadgeColor(badge)}`}>
+                  <Badge key={index} className={getBadgeColor(badge)}>
                     {badge}
                   </Badge>
                 ))}
@@ -201,45 +202,51 @@ export default function ProfilePage() {
 
       {/* Tabs for questions and answers */}
       <Tabs defaultValue="questions" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-2 w-full max-w-md bg-gray-900">
-          <TabsTrigger value="questions" className="data-[state=active]:bg-purple-600">
+        <TabsList className="profile-tabs-list">
+          <TabsTrigger 
+            value="questions" 
+            className={cn(activeTab === "questions" && "profile-tab-active")}
+          >
             Questions ({questions.length})
           </TabsTrigger>
-          <TabsTrigger value="answers" className="data-[state=active]:bg-purple-600">
+          <TabsTrigger 
+            value="answers" 
+            className={cn(activeTab === "answers" && "profile-tab-active")}
+          >
             Answers ({answers.length})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="questions" className="mt-6 space-y-4">
+        <TabsContent value="questions" className="profile-content">
           {questions.length > 0 ? (
             questions.map((question) => <QuestionCard key={question._id} question={question} />)
           ) : (
-            <div className="text-center p-8 border border-dashed border-gray-800 rounded-lg">
+            <div className="profile-empty-state">
               <p className="text-muted-foreground">No questions asked yet</p>
             </div>
           )}
         </TabsContent>
 
-        <TabsContent value="answers" className="mt-6 space-y-6">
+        <TabsContent value="answers" className="profile-content">
           {answers.length > 0 ? (
             answers.map((answer) => (
-              <div key={answer._id} className="border border-gray-800 rounded-lg p-6 bg-gray-900/50">
+              <div key={answer._id} className="profile-answer-card">
                 <div className="mb-4">
-                  <Link to={`/question/${answer.question._id}`} className="text-lg font-medium hover:text-purple-400">
+                  <Link to={`/question/${answer.question._id}`} className="profile-answer-title">
                     {answer.question.title}
                   </Link>
                 </div>
 
-                <div className="prose prose-invert max-w-none line-clamp-3 mb-4">
+                <div className="profile-answer-content">
                   <p>{answer.content.substring(0, 200)}...</p>
                 </div>
 
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-gray-800 border-gray-700">
+                <div className="profile-answer-meta">
+                  <div className="profile-answer-stats">
+                    <Badge variant="outline" className="profile-answer-badge">
                       {answer.upvotes - answer.downvotes} votes
                     </Badge>
-                    {answer.isAccepted && <Badge className="bg-green-700 hover:bg-green-700">Accepted</Badge>}
+                    {answer.isAccepted && <Badge className="profile-answer-accepted">Accepted</Badge>}
                   </div>
 
                   <span className="text-sm text-muted-foreground">
@@ -249,7 +256,7 @@ export default function ProfilePage() {
               </div>
             ))
           ) : (
-            <div className="text-center p-8 border border-dashed border-gray-800 rounded-lg">
+            <div className="profile-empty-state">
               <p className="text-muted-foreground">No answers provided yet</p>
             </div>
           )}

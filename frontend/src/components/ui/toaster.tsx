@@ -6,16 +6,23 @@ export function Toaster() {
   const { toasts } = useToast()
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div className="toaster-container">
       {toasts.map((toast, index) => (
         <div
           key={index}
-          className={`rounded-lg p-4 shadow-lg ${toast.variant === "destructive" ? "bg-red-600" : "bg-gray-800"}`}
+          className={cn(
+            "toast",
+            toast.variant === "destructive" ? "toast-destructive" : "toast-default"
+          )}
         >
-          {toast.title && <h4 className="font-medium">{toast.title}</h4>}
-          {toast.description && <p className="text-sm text-gray-300">{toast.description}</p>}
+          {toast.title && <h4 className="toast-title">{toast.title}</h4>}
+          {toast.description && <p className="toast-description">{toast.description}</p>}
         </div>
       ))}
     </div>
   )
+}
+
+export function cn(...classes: any[]) {
+  return classes.filter(Boolean).join(' ')
 }

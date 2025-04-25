@@ -10,11 +10,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { X } from "lucide-react"
+import { X } from 'lucide-react'
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { api } from "@/lib/api"
 import MarkdownRenderer from "@/components/markdown-renderer"
+import { cn } from "@/lib/utils"
 
 export default function AskQuestionPage() {
   const { isAuthenticated } = useAuth()
@@ -144,12 +145,12 @@ export default function AskQuestionPage() {
   ]
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Ask a Question</h1>
+    <div className="ask-question-container">
+      <h1 className="ask-question-title">Ask a Question</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-2">
-          <label htmlFor="title" className="text-sm font-medium">
+      <form onSubmit={handleSubmit} className="ask-question-form">
+        <div className="ask-question-field">
+          <label htmlFor="title" className="ask-question-label">
             Question Title
           </label>
           <Input
@@ -157,16 +158,16 @@ export default function AskQuestionPage() {
             placeholder="e.g. How to implement a binary search tree in JavaScript?"
             value={title}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-            className="bg-gray-900 border-gray-800"
+            className="ask-question-input"
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="category" className="text-sm font-medium">
+        <div className="ask-question-field">
+          <label htmlFor="category" className="ask-question-label">
             Category
           </label>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="bg-gray-900 border-gray-800">
+            <SelectTrigger className="ask-question-input">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
             <SelectContent>
@@ -179,8 +180,8 @@ export default function AskQuestionPage() {
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="tags" className="text-sm font-medium">
+        <div className="ask-question-field">
+          <label htmlFor="tags" className="ask-question-label">
             Tags (up to 5)
           </label>
           <div className="flex gap-2">
@@ -190,21 +191,21 @@ export default function AskQuestionPage() {
               value={tagInput}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTagInput(e.target.value)}
               onKeyDown={handleTagKeyDown}
-              className="bg-gray-900 border-gray-800"
+              className="ask-question-input"
             />
             <Button type="button" onClick={handleAddTag} variant="outline" className="border-gray-800">
               Add
             </Button>
           </div>
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="ask-question-tag-container">
               {tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="bg-gray-800 hover:bg-gray-700 gap-1">
+                <Badge key={tag} variant="secondary" className="ask-question-tag">
                   {tag}
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(tag)}
-                    className="ml-1 rounded-full hover:bg-gray-600 p-0.5"
+                    className="ask-question-tag-remove"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -214,16 +215,22 @@ export default function AskQuestionPage() {
           )}
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="content" className="text-sm font-medium">
+        <div className="ask-question-field">
+          <label htmlFor="content" className="ask-question-label">
             Question Details
           </label>
-          <Tabs value={previewTab} onValueChange={setPreviewTab} className="w-full">
-            <TabsList className="grid grid-cols-2 bg-gray-900">
-              <TabsTrigger value="write" className="data-[state=active]:bg-purple-600">
+          <Tabs value={previewTab} onValueChange={setPreviewTab} className="ask-question-tabs">
+            <TabsList className="ask-question-tabs-list">
+              <TabsTrigger 
+                value="write" 
+                className={cn(previewTab === "write" && "ask-question-tab-active")}
+              >
                 Write
               </TabsTrigger>
-              <TabsTrigger value="preview" className="data-[state=active]:bg-purple-600">
+              <TabsTrigger 
+                value="preview" 
+                className={cn(previewTab === "preview" && "ask-question-tab-active")}
+              >
                 Preview
               </TabsTrigger>
             </TabsList>
@@ -233,15 +240,15 @@ export default function AskQuestionPage() {
                 placeholder="Describe your question in detail. Markdown is supported."
                 value={content}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
-                className="min-h-[300px] bg-gray-900 border-gray-800"
+                className="ask-question-content"
               />
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="ask-question-hint">
                 Markdown and code formatting is supported. Use backticks for inline code and triple backticks for code
                 blocks.
               </p>
             </TabsContent>
             <TabsContent value="preview" className="mt-2">
-              <div className="min-h-[300px] p-4 border rounded-md border-gray-800 bg-gray-900">
+              <div className="ask-question-preview">
                 {content ? (
                   <MarkdownRenderer content={content} />
                 ) : (
@@ -253,7 +260,7 @@ export default function AskQuestionPage() {
         </div>
 
         <div className="flex justify-end">
-          <Button type="submit" className="bg-purple-600 hover:bg-purple-700" disabled={submitting}>
+          <Button type="submit" className="ask-question-submit" disabled={submitting}>
             {submitting ? "Posting..." : "Post Question"}
           </Button>
         </div>

@@ -10,8 +10,8 @@ const Separator = forwardRef<HTMLDivElement, SeparatorProps>(
     <div
       ref={ref}
       className={cn(
-        "shrink-0 bg-border",
-        orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
+        "separator",
+        orientation === "horizontal" ? "separator-horizontal" : "separator-vertical",
         className,
       )}
       {...props}

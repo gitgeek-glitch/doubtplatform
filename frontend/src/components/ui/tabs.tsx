@@ -30,16 +30,7 @@ export function Tabs({ value, onValueChange, defaultValue, children, ...props }:
 export interface TabsListProps extends HTMLAttributes<HTMLDivElement> {}
 
 export const TabsList = forwardRef<HTMLDivElement, TabsListProps>(({ className, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
-        className,
-      )}
-      {...props}
-    />
-  )
+  return <div ref={ref} className={cn("tabs-list", className)} {...props} />
 })
 TabsList.displayName = "TabsList"
 
@@ -55,8 +46,8 @@ export const TabsTrigger = forwardRef<HTMLButtonElement, TabsTriggerProps>(({ cl
     <button
       ref={ref}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-        isSelected ? "bg-background text-foreground shadow-sm" : "hover:bg-muted hover:text-muted-foreground",
+        "tabs-trigger",
+        isSelected ? "tabs-trigger-active" : "tabs-trigger-inactive",
         className,
       )}
       onClick={() => onValueChange(value)}
@@ -80,10 +71,7 @@ export const TabsContent = forwardRef<HTMLDivElement, TabsContentProps>(({ class
   return (
     <div
       ref={ref}
-      className={cn(
-        "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        className,
-      )}
+      className={cn("tabs-content", className)}
       data-state={isSelected ? "active" : "inactive"}
       {...props}
     />

@@ -24,7 +24,7 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "dark", // Changed default to dark to match your CSS default
   storageKey = "vite-ui-theme",
   ...props
 }: ThemeProviderProps) {
@@ -32,17 +32,45 @@ export function ThemeProvider({
 
   useEffect(() => {
     const root = window.document.documentElement
+    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 
+    // First remove both classes
     root.classList.remove("light", "dark")
 
+    // Apply the appropriate class
     if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-
       root.classList.add(systemTheme)
-      return
+    } else {
+      root.classList.add(theme)
     }
 
-    root.classList.add(theme)
+    // Set data attribute for components that use it
+    root.setAttribute("data-theme", theme === "system" ? systemTheme : theme)
+
+    // Force a repaint to ensure styles are applied correctly
+    const originalDisplay = document.body.style.display
+    document.body.style.display = "none"
+    void document.body.offsetHeight // Trigger a reflow
+    document.body.style.display = originalDisplay
+  }, [theme])
+
+  // Listen for system theme changes
+  useEffect(() => {
+    if (theme === "system") {
+      const mqListener = (e: MediaQueryListEvent) => {
+        const root = window.document.documentElement
+        const newTheme = e.matches ? "dark" : "light"
+
+        root.classList.remove("light", "dark")
+        root.classList.add(newTheme)
+        root.setAttribute("data-theme", newTheme)
+      }
+
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+      mediaQuery.addEventListener("change", mqListener)
+
+      return () => mediaQuery.removeEventListener("change", mqListener)
+    }
   }, [theme])
 
   const value = {

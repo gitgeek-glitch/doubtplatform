@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +16,7 @@ import {
 import { Search, Menu, X, LogOut, User, Settings, Bell, Moon, Sun } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
 import { useTheme } from "@/components/theme-provider"
+import { cn } from "@/lib/utils"
 
 export default function Navbar() {
   const { user, logout, isAuthenticated } = useAuth()
@@ -24,11 +24,21 @@ export default function Navbar() {
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10)
+    }
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
       navigate(`/?search=${encodeURIComponent(searchQuery)}`)
+      setMobileMenuOpen(false)
     }
   }
 
@@ -37,75 +47,86 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-gray-800 bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-black/60">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+    <header className={cn("navbar", scrolled ? "navbar-scrolled" : "navbar-transparent")}>
+      <div className="navbar-container">
         <div className="flex items-center gap-4">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-white">DoubtSolve</span>
+          <Link to="/" className="navbar-logo">
+            <div className="navbar-logo-icon">
+              <span className="text-lg font-bold text-white">DS</span>
+            </div>
+            <span className="navbar-logo-text">DoubtSolve</span>
           </Link>
-          <form onSubmit={handleSearch} className="hidden md:flex relative">
-            <Input
-              type="search"
-              placeholder="Search questions..."
-              className="w-[300px] bg-gray-900 border-gray-800 focus-visible:ring-purple-500"
-              value={searchQuery}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-              autoComplete="off"
-            />
-            <Button type="submit" size="icon" variant="ghost" className="absolute right-0 top-0 h-full">
-              <Search className="h-4 w-4" />
-            </Button>
+
+          <form onSubmit={handleSearch} className="navbar-search">
+            <div className="relative group">
+              <Input
+                type="search"
+                placeholder="Search questions..."
+                className="navbar-search-input"
+                value={searchQuery}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                autoComplete="off"
+              />
+              <Search className="navbar-search-icon" />
+            </div>
           </form>
         </div>
 
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className="hidden md:flex">
-            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className="navbar-theme-toggle">
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
-          <Button variant="ghost" size="icon" className="hidden md:flex relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-purple-500 text-[10px] font-bold">
-              3
-            </span>
+          <Button variant="ghost" size="icon" className="navbar-notification">
+            <Bell className="h-4 w-4" />
+            <span className="navbar-notification-badge">3</span>
           </Button>
 
           {isAuthenticated ? (
             <>
-              <Button
-                variant="default"
-                className="hidden md:flex bg-purple-600 hover:bg-purple-700"
-                onClick={() => navigate("/ask")}
-              >
+              <Button variant="default" className="navbar-button" onClick={() => navigate("/ask")}>
                 Ask Question
               </Button>
 
               <div className="relative">
                 <DropdownMenu>
-                  <DropdownMenuTrigger>
-                    <Avatar className="h-8 w-8 cursor-pointer">
-                      <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name} />
-                      <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
-                    </Avatar>
+                  <DropdownMenuTrigger className="focus:outline-none">
+                    <div className="navbar-avatar-container">
+                      <Avatar className="h-8 w-8 cursor-pointer">
+                        <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name} />
+                        <AvatarFallback className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
+                          {user?.name?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end">
-                    <div className="flex items-center justify-start gap-2 p-2">
-                      <div className="flex flex-col space-y-1 leading-none">
-                        <p className="font-medium">{user?.name}</p>
-                        <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  <DropdownMenuContent className="navbar-dropdown" align="end">
+                    <div className="navbar-dropdown-user">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name} />
+                        <AvatarFallback className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
+                          {user?.name?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col space-y-0.5 leading-none">
+                        <p className="font-medium text-sm text-white">{user?.name}</p>
+                        <p className="text-xs text-gray-400">{user?.email}</p>
                       </div>
                     </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate(`/profile/${user?._id}`)}>
-                      <User className="mr-2 h-4 w-4" />
+                    <DropdownMenuSeparator className="my-1 h-px bg-gray-800/70" />
+                    <DropdownMenuItem
+                      onClick={() => navigate(`/profile/${user?._id}`)}
+                      className="navbar-dropdown-item"
+                    >
+                      <User className="mr-2 h-4 w-4 text-gray-400" />
                       <span>Profile</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Settings className="mr-2 h-4 w-4" />
+                    <DropdownMenuItem className="navbar-dropdown-item">
+                      <Settings className="mr-2 h-4 w-4 text-gray-400" />
                       <span>Settings</span>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={logout}>
+                    <DropdownMenuSeparator className="my-1 h-px bg-gray-800/70" />
+                    <DropdownMenuItem onClick={logout} className="navbar-dropdown-item-danger">
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
                     </DropdownMenuItem>
@@ -114,43 +135,42 @@ export default function Navbar() {
               </div>
             </>
           ) : (
-            <Button
-              variant="default"
-              className="hidden md:flex bg-purple-600 hover:bg-purple-700"
-              onClick={() => navigate("/auth")}
-            >
+            <Button variant="default" className="navbar-button" onClick={() => navigate("/auth")}>
               Sign In
             </Button>
           )}
 
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="navbar-mobile-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
       </div>
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden">
-          <div className="space-y-4 px-4 py-5 pb-6">
-            <form onSubmit={handleSearch} className="relative">
+        <div className="navbar-mobile-menu">
+          <div className="navbar-mobile-container">
+            <form onSubmit={handleSearch} className="navbar-mobile-search">
               <Input
                 type="search"
                 placeholder="Search questions..."
-                className="w-full bg-gray-900 border-gray-800"
+                className="navbar-mobile-search-input"
                 value={searchQuery}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                 autoComplete="off"
               />
-              <Button type="submit" size="icon" variant="ghost" className="absolute right-0 top-0 h-full">
-                <Search className="h-4 w-4" />
-              </Button>
+              <Search className="navbar-search-icon" />
             </form>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
               <Button
                 variant="default"
-                className="w-full bg-purple-600 hover:bg-purple-700"
+                className="navbar-mobile-button"
                 onClick={() => {
                   navigate("/ask")
                   setMobileMenuOpen(false)
@@ -161,33 +181,52 @@ export default function Navbar() {
 
               {isAuthenticated ? (
                 <>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      navigate(`/profile/${user?._id}`)
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      logout()
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
-                  </Button>
+                  <div className="navbar-mobile-user">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name} />
+                      <AvatarFallback className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
+                        {user?.name?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <p className="font-medium text-white">{user?.name}</p>
+                      <p className="text-xs text-gray-400">{user?.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 space-y-1">
+                    <Button
+                      variant="ghost"
+                      className="navbar-mobile-menu-item"
+                      onClick={() => {
+                        navigate(`/profile/${user?._id}`)
+                        setMobileMenuOpen(false)
+                      }}
+                    >
+                      <User className="mr-3 h-5 w-5 text-purple-400" />
+                      Profile
+                    </Button>
+                    <Button variant="ghost" className="navbar-mobile-menu-item">
+                      <Settings className="mr-3 h-5 w-5 text-purple-400" />
+                      Settings
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="navbar-mobile-menu-item"
+                      onClick={() => {
+                        logout()
+                        setMobileMenuOpen(false)
+                      }}
+                    >
+                      <LogOut className="mr-3 h-5 w-5 text-red-400" />
+                      Log out
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <Button
-                  variant="outline"
-                  className="w-full"
+                  variant="default"
+                  className="navbar-mobile-button"
                   onClick={() => {
                     navigate("/auth")
                     setMobileMenuOpen(false)
@@ -197,19 +236,21 @@ export default function Navbar() {
                 </Button>
               )}
 
-              <Button variant="ghost" className="w-full justify-start" onClick={toggleTheme}>
-                {theme === "dark" ? (
-                  <>
-                    <Sun className="mr-2 h-4 w-4" />
-                    Light Mode
-                  </>
-                ) : (
-                  <>
-                    <Moon className="mr-2 h-4 w-4" />
-                    Dark Mode
-                  </>
-                )}
-              </Button>
+              <div className="mt-auto">
+                <Button variant="ghost" className="navbar-mobile-menu-item" onClick={toggleTheme}>
+                  {theme === "dark" ? (
+                    <>
+                      <Sun className="mr-3 h-5 w-5 text-amber-400" />
+                      Light Mode
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="mr-3 h-5 w-5 text-indigo-400" />
+                      Dark Mode
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

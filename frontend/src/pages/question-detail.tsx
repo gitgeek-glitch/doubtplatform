@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowUp, ArrowDown, MessageSquare, Check, Share2 } from "lucide-react"
+import { ArrowUp, ArrowDown, MessageSquare, Check, Share2 } from 'lucide-react'
 import { formatDistanceToNow } from "date-fns"
 import { api } from "@/lib/api"
 import { useAuth } from "@/context/auth-context"
@@ -329,13 +329,13 @@ export default function QuestionDetailPage() {
   })
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-      <div className="lg:col-span-3 space-y-8">
+    <div className="question-detail-grid">
+      <div className="question-detail-main">
         {/* Question */}
         <div className="space-y-6">
-          <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-            <h1 className="text-2xl md:text-3xl font-bold">{question.title}</h1>
-            <Button variant="outline" size="sm" className="w-fit border-gray-800" onClick={handleShareQuestion}>
+          <div className="question-detail-header">
+            <h1 className="question-detail-title">{question.title}</h1>
+            <Button variant="outline" size="sm" className="question-detail-share" onClick={handleShareQuestion}>
               <Share2 className="h-4 w-4 mr-2" />
               Share
             </Button>
@@ -352,38 +352,38 @@ export default function QuestionDetailPage() {
           </div>
 
           <div className="flex gap-6">
-            <div className="flex flex-col items-center gap-1">
+            <div className="question-detail-vote-container">
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn("h-10 w-10 rounded-full", questionVote === 1 && "text-purple-400")}
+                className={cn("question-detail-vote-button", questionVote === 1 && "question-detail-vote-up")}
                 onClick={() => handleQuestionVote(1)}
               >
                 <ArrowUp className="h-6 w-6" />
               </Button>
-              <span className="font-medium text-xl">{question.upvotes - question.downvotes}</span>
+              <span className="question-detail-vote-count">{question.upvotes - question.downvotes}</span>
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn("h-10 w-10 rounded-full", questionVote === -1 && "text-red-400")}
+                className={cn("question-detail-vote-button", questionVote === -1 && "question-detail-vote-down")}
                 onClick={() => handleQuestionVote(-1)}
               >
                 <ArrowDown className="h-6 w-6" />
               </Button>
             </div>
 
-            <div className="flex-1">
+            <div className="question-detail-content">
               <div className="prose prose-invert max-w-none">
                 <MarkdownRenderer content={question.content} />
               </div>
 
-              <div className="flex justify-end mt-6">
-                <div className="flex items-center gap-2 bg-gray-800/50 rounded-lg p-3">
-                  <div className="text-right text-sm">
+              <div className="question-detail-author">
+                <div className="question-detail-author-card">
+                  <div className="question-detail-author-info">
                     <p className="text-muted-foreground">
                       Asked {formatDistanceToNow(new Date(question.createdAt), { addSuffix: true })}
                     </p>
-                    <Link to={`/profile/${question.author._id}`} className="font-medium hover:text-purple-400">
+                    <Link to={`/profile/${question.author._id}`} className="question-detail-author-link">
                       {question.author.name}
                     </Link>
                   </div>
@@ -401,7 +401,7 @@ export default function QuestionDetailPage() {
 
         {/* Answers */}
         <div className="space-y-6">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+          <h2 className="question-detail-answers-header">
             <MessageSquare className="h-5 w-5" />
             {answers.length} {answers.length === 1 ? "Answer" : "Answers"}
           </h2>
@@ -411,30 +411,30 @@ export default function QuestionDetailPage() {
               {sortedAnswers.map((answer) => (
                 <div
                   key={answer._id}
-                  className={cn("p-6 rounded-lg", answer.isAccepted ? "bg-green-900/20 border border-green-800" : "")}
+                  className={cn("question-detail-answer", answer.isAccepted && "question-detail-answer-accepted")}
                 >
                   <div className="flex gap-6">
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="question-detail-vote-container">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className={cn("h-10 w-10 rounded-full", answerVotes[answer._id] === 1 && "text-purple-400")}
+                        className={cn("question-detail-vote-button", answerVotes[answer._id] === 1 && "question-detail-vote-up")}
                         onClick={() => handleAnswerVote(answer._id, 1)}
                       >
                         <ArrowUp className="h-6 w-6" />
                       </Button>
-                      <span className="font-medium text-xl">{answer.upvotes - answer.downvotes}</span>
+                      <span className="question-detail-vote-count">{answer.upvotes - answer.downvotes}</span>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className={cn("h-10 w-10 rounded-full", answerVotes[answer._id] === -1 && "text-red-400")}
+                        className={cn("question-detail-vote-button", answerVotes[answer._id] === -1 && "question-detail-vote-down")}
                         onClick={() => handleAnswerVote(answer._id, -1)}
                       >
                         <ArrowDown className="h-6 w-6" />
                       </Button>
 
                       {answer.isAccepted ? (
-                        <div className="mt-2 text-green-500 flex flex-col items-center">
+                        <div className="question-detail-accepted-indicator">
                           <Check className="h-6 w-6" />
                           <span className="text-xs">Accepted</span>
                         </div>
@@ -443,7 +443,7 @@ export default function QuestionDetailPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="mt-2 text-muted-foreground hover:text-green-500"
+                            className="question-detail-accept-button"
                             onClick={() => handleAcceptAnswer(answer._id)}
                           >
                             <Check className="h-5 w-5" />
@@ -452,18 +452,18 @@ export default function QuestionDetailPage() {
                       )}
                     </div>
 
-                    <div className="flex-1">
+                    <div className="question-detail-content">
                       <div className="prose prose-invert max-w-none">
                         <MarkdownRenderer content={answer.content} />
                       </div>
 
-                      <div className="flex justify-end mt-6">
-                        <div className="flex items-center gap-2 bg-gray-800/50 rounded-lg p-3">
-                          <div className="text-right text-sm">
+                      <div className="question-detail-author">
+                        <div className="question-detail-author-card">
+                          <div className="question-detail-author-info">
                             <p className="text-muted-foreground">
                               Answered {formatDistanceToNow(new Date(answer.createdAt), { addSuffix: true })}
                             </p>
-                            <Link to={`/profile/${answer.author._id}`} className="font-medium hover:text-purple-400">
+                            <Link to={`/profile/${answer.author._id}`} className="question-detail-author-link">
                               {answer.author.name}
                             </Link>
                           </div>
@@ -479,26 +479,26 @@ export default function QuestionDetailPage() {
               ))}
             </div>
           ) : (
-            <div className="text-center p-8 border border-dashed border-gray-800 rounded-lg">
+            <div className="question-detail-no-answers">
               <p className="text-muted-foreground">No answers yet. Be the first to answer!</p>
             </div>
           )}
         </div>
 
         {/* Answer form */}
-        <div className="space-y-4">
+        <div className="question-detail-answer-form">
           <h3 className="text-xl font-semibold">Your Answer</h3>
 
           <Textarea
             placeholder="Write your answer here... (Markdown supported)"
-            className="min-h-[200px] bg-gray-900 border-gray-800"
+            className="question-detail-answer-textarea"
             value={answerContent}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setAnswerContent(e.target.value)}
           />
 
           <div className="flex justify-end">
             <Button
-              className="bg-purple-600 hover:bg-purple-700"
+              className="ask-question-submit"
               disabled={submitting || !isAuthenticated}
               onClick={handleSubmitAnswer}
             >
@@ -518,17 +518,17 @@ export default function QuestionDetailPage() {
       </div>
 
       {/* Sidebar */}
-      <div className="space-y-6">
-        <div className="bg-gray-900/50 rounded-lg border border-gray-800 p-4">
-          <h3 className="font-medium mb-3">Related Questions</h3>
+      <div className="question-detail-sidebar">
+        <div className="question-detail-sidebar-card">
+          <h3 className="question-detail-sidebar-title">Related Questions</h3>
           {relatedQuestions.length > 0 ? (
-            <ul className="space-y-3">
+            <ul className="question-detail-related-list">
               {relatedQuestions.map((q) => (
                 <li key={q._id}>
-                  <Link to={`/question/${q._id}`} className="text-sm hover:text-purple-400 block">
+                  <Link to={`/question/${q._id}`} className="question-detail-related-link">
                     {q.title}
                   </Link>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="question-detail-related-meta">
                     <Badge variant="outline" className="text-xs">
                       {q.upvotes - q.downvotes} votes
                     </Badge>
@@ -544,9 +544,9 @@ export default function QuestionDetailPage() {
           )}
         </div>
 
-        <div className="bg-gray-900/50 rounded-lg border border-gray-800 p-4">
-          <h3 className="font-medium mb-3">Hot Tags</h3>
-          <div className="flex flex-wrap gap-2">
+        <div className="question-detail-sidebar-card">
+          <h3 className="question-detail-sidebar-title">Hot Tags</h3>
+          <div className="question-detail-tag-cloud">
             {["dsa", "javascript", "react", "python", "algorithms", "database", "web"].map((tag) => (
               <Link to={`/?tag=${tag}`} key={tag}>
                 <Badge variant="outline" className="bg-gray-800/50 hover:bg-gray-800 border-gray-700">

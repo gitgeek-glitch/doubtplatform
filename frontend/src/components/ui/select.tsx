@@ -1,6 +1,15 @@
 "use client"
 
-import { createContext, forwardRef, useContext, useState, useEffect, useRef, type HTMLAttributes, type ReactNode } from "react"
+import {
+  createContext,
+  forwardRef,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  type HTMLAttributes,
+  type ReactNode,
+} from "react"
 import { cn } from "@/lib/utils"
 
 // Context for select state
@@ -35,11 +44,11 @@ export function Select({ value, onValueChange, children, ...props }: SelectProps
     }
 
     if (open) {
-      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener("mousedown", handleClickOutside)
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [open])
 
@@ -61,15 +70,7 @@ export const SelectTrigger = forwardRef<HTMLDivElement, SelectTriggerProps>(
     const { open, setOpen } = useContext(SelectContext)
 
     return (
-      <div
-        ref={ref}
-        className={cn(
-          "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          className,
-        )}
-        onClick={() => setOpen(!open)}
-        {...props}
-      >
+      <div ref={ref} className={cn("select-trigger", className)} onClick={() => setOpen(!open)} {...props}>
         {children}
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -81,9 +82,7 @@ export const SelectTrigger = forwardRef<HTMLDivElement, SelectTriggerProps>(
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform ${
-            open ? "rotate-180" : "rotate-0"
-          }`}
+          className={`ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform ${open ? "rotate-180" : "rotate-0"}`}
         >
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
@@ -102,7 +101,7 @@ export const SelectValue = forwardRef<HTMLSpanElement, SelectValueProps>(
     const { value } = useContext(SelectContext)
 
     return (
-      <span ref={ref} className={cn("block truncate", className)} {...props}>
+      <span ref={ref} className={cn("select-value", className)} {...props}>
         {value || placeholder}
       </span>
     )
@@ -112,24 +111,19 @@ SelectValue.displayName = "SelectValue"
 
 export interface SelectContentProps extends HTMLAttributes<HTMLDivElement> {}
 
-export const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(({ className, children, ...props }, ref) => {
-  const { open } = useContext(SelectContext)
+export const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
+  ({ className, children, ...props }, ref) => {
+    const { open } = useContext(SelectContext)
 
-  if (!open) return null;
+    if (!open) return null
 
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "absolute z-50 top-full mt-1 min-w-[8rem] w-full overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-    </div>
-  )
-})
+    return (
+      <div ref={ref} className={cn("select-content", className)} {...props}>
+        {children}
+      </div>
+    )
+  },
+)
 SelectContent.displayName = "SelectContent"
 
 export interface SelectItemProps extends HTMLAttributes<HTMLDivElement> {
@@ -144,11 +138,7 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     return (
       <div
         ref={ref}
-        className={cn(
-          "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground",
-          isSelected && "bg-accent",
-          className,
-        )}
+        className={cn("select-item", isSelected && "select-item-selected", className)}
         onClick={() => {
           onValueChange(itemValue)
           setOpen(false) // Close the dropdown after selection
@@ -156,7 +146,7 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         {...props}
       >
         {isSelected && (
-          <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+          <span className="select-item-check">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="24"
