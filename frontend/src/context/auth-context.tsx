@@ -1,142 +1,157 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { useToast } from "@/hooks/use-toast"
+import { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { api } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import { useNavigate } from "react-router-dom"
 
-export interface User {
+interface User {
   _id: string
   name: string
   email: string
-  bio?: string
   avatar?: string
   reputation: number
-  badges: string[]
-  createdAt: string
 }
 
 interface AuthContextType {
   user: User | null
-  loading: boolean
+  isAuthenticated: boolean
+  isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
-  isAuthenticated: boolean
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,
+  login: async () => {},
+  register: async () => {},
+  logout: () => {},
+})
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
+  const navigate = useNavigate()
 
+  // Check if user is already logged in
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthStatus = async () => {
       try {
+        setIsLoading(true)
         const token = localStorage.getItem("token")
-        if (!token) {
-          setLoading(false)
-          return
+        
+        if (token) {
+          // Set default auth header
+          api.defaults.headers.common["Authorization"] = `Bearer ${token}`
+          
+          // Verify token and get user data
+          const response = await api.get("/auth/me")
+          setUser(response.data)
         }
-
-        const response = await api.get(`${import.meta.env.VITE_API_URL}/auth/me`)
-        setUser(response.data.user)
       } catch (error) {
-        console.error("Auth check error:", error)
+        // Clear invalid token
         localStorage.removeItem("token")
+        delete api.defaults.headers.common["Authorization"]
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     }
 
-    checkAuth()
+    checkAuthStatus()
   }, [])
 
   const login = async (email: string, password: string) => {
     try {
-      setLoading(true)
-      // Trim email to remove any whitespace
-      const trimmedEmail = email.trim().toLowerCase()
-      console.log("Attempting login with:", { email: trimmedEmail })
+      const response = await api.post("/auth/login", { email, password })
       
-      const response = await api.post(`${import.meta.env.VITE_API_URL}/auth/login`, { 
-        email: trimmedEmail, 
-        password 
-      })
-      console.log(response)
-      
+      // Save token to localStorage
       localStorage.setItem("token", response.data.token)
+      
+      // Set default auth header
+      api.defaults.headers.common["Authorization"] = `Bearer ${response.data.token}`
+      
+      // Set user data
       setUser(response.data.user)
+      
       toast({
         title: "Login successful",
-        description: "Welcome back!",
+        description: `Welcome back, ${response.data.user.name}!`,
       })
+      
+      // Redirect to home page
+      navigate("/home")
     } catch (error: any) {
-      console.error("Login error:", error)
-      const errorMessage = error.response?.data?.message || "Something went wrong"
       toast({
         title: "Login failed",
-        description: errorMessage,
+        description: error.response?.data?.message || "Invalid email or password",
         variant: "destructive",
       })
       throw error
-    } finally {
-      setLoading(false)
     }
   }
 
   const register = async (name: string, email: string, password: string) => {
     try {
-      setLoading(true)
-      // Trim email to remove any whitespace
-      const trimmedEmail = email.trim().toLowerCase()
-      console.log("Attempting registration with:", { name, email: trimmedEmail })
+      const response = await api.post("/auth/register", { name, email, password })
       
-      const response = await api.post(`${import.meta.env.VITE_API_URL}/auth/register`, { 
-        name, 
-        email: trimmedEmail, 
-        password 
-      })
-      console.log(response)
+      // Save token to localStorage
       localStorage.setItem("token", response.data.token)
+      
+      // Set default auth header
+      api.defaults.headers.common["Authorization"] = `Bearer ${response.data.token}`
+      
+      // Set user data
       setUser(response.data.user)
+      
       toast({
         title: "Registration successful",
-        description: "Your account has been created",
+        description: `Welcome to DoubtSolve, ${response.data.user.name}!`,
       })
+      
+      // Redirect to home page
+      navigate("/home")
     } catch (error: any) {
-      console.error("Registration error:", error)
-      const errorMessage = error.response?.data?.message || "Something went wrong"
       toast({
         title: "Registration failed",
-        description: errorMessage,
+        description: error.response?.data?.message || "Could not create account",
         variant: "destructive",
       })
       throw error
-    } finally {
-      setLoading(false)
     }
   }
 
   const logout = () => {
+    // Clear token from localStorage
     localStorage.removeItem("token")
+    
+    // Remove auth header
+    delete api.defaults.headers.common["Authorization"]
+    
+    // Clear user data
     setUser(null)
+    
     toast({
       title: "Logged out",
-      description: "You have been logged out successfully",
+      description: "You have been successfully logged out",
     })
+    
+    // Redirect to landing page
+    navigate("/")
   }
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        loading,
+        isAuthenticated: !!user,
+        isLoading,
         login,
         register,
         logout,
-        isAuthenticated: !!user,
       }}
     >
       {children}
@@ -144,10 +159,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   )
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
-}
+export const useAuth = () => useContext(AuthContext)

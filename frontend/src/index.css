@@ -548,7 +548,7 @@
 
   .ask-question-submit {
     @apply h-12 px-8 text-sm font-medium rounded-full bg-purple-600 hover:bg-purple-700 shadow-md hover:shadow-lg transition-all;
-  }  
+  }
 
   /* Question Detail Page Styles */
   .question-detail-grid {
@@ -1208,4 +1208,356 @@ html.has-scroll-dragging {
 
 :root.light .toast-description {
   @apply text-gray-600;
+}
+
+/* Add these styles to your existing index.css file */
+
+/* Landing Page Styles */
+.landing-container {
+  @apply w-full overflow-hidden;
+}
+
+/* Hero Section */
+.landing-hero {
+  @apply relative min-h-screen flex flex-col items-center justify-center overflow-hidden;
+}
+
+.landing-hero-content {
+  @apply relative z-10 text-center max-w-4xl mx-auto px-6 py-24;
+}
+
+.landing-hero-title {
+  @apply text-4xl md:text-6xl lg:text-7xl font-extrabold mb-6 opacity-0 transform translate-y-8;
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.landing-hero-subtitle {
+  @apply text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto opacity-0 transform translate-y-8;
+  transition: opacity 0.8s ease-out 0.2s, transform 0.8s ease-out 0.2s;
+}
+
+.landing-hero-buttons {
+  @apply flex flex-col sm:flex-row gap-4 justify-center opacity-0 transform translate-y-8;
+  transition: opacity 0.8s ease-out 0.4s, transform 0.8s ease-out 0.4s;
+}
+
+.landing-hero-button-primary {
+  @apply h-12 px-8 text-base font-medium rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all;
+}
+
+.landing-hero-button-secondary {
+  @apply h-12 px-8 text-base font-medium rounded-full border-2 border-purple-500/30 hover:border-purple-500/50 bg-background/50 backdrop-blur-sm;
+}
+
+.landing-hero-visual {
+  @apply absolute inset-0 w-full h-full;
+}
+
+.landing-hero-visual-inner {
+  @apply w-full h-full opacity-0 scale-95;
+  transition: opacity 1.2s ease-out 0.3s, transform 1.2s ease-out 0.3s;
+}
+
+.landing-hero-video {
+  @apply w-full h-full object-cover;
+}
+
+.landing-hero-overlay {
+  @apply absolute inset-0 bg-gradient-to-b from-background/80 via-background/50 to-background;
+}
+
+.animate-in {
+  @apply opacity-100 transform translate-y-0 scale-100;
+}
+
+.landing-scroll-indicator {
+  @apply absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center text-sm text-muted-foreground hover:text-foreground transition-colors;
+}
+
+/* Features Section */
+.landing-features {
+  @apply py-24 px-6;
+}
+
+.landing-section-header {
+  @apply text-center max-w-3xl mx-auto mb-16;
+}
+
+.landing-section-title {
+  @apply text-3xl md:text-5xl font-bold mb-4;
+}
+
+.landing-section-subtitle {
+  @apply text-xl text-muted-foreground;
+}
+
+.landing-features-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto;
+}
+
+.landing-feature-card {
+  @apply bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-8 hover:shadow-lg transition-all duration-300 hover:-translate-y-1;
+}
+
+.landing-feature-icon {
+  @apply w-16 h-16 rounded-full bg-gradient-to-br from-purple-600/20 to-indigo-600/20 flex items-center justify-center text-purple-400 mb-6;
+}
+
+.landing-feature-title {
+  @apply text-xl font-semibold mb-3;
+}
+
+.landing-feature-description {
+  @apply text-muted-foreground;
+}
+
+/* Demo Section */
+.landing-demo {
+  @apply py-24 px-6 bg-gradient-to-b from-background to-background/50;
+}
+
+.landing-demo-container {
+  @apply max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center;
+}
+
+.landing-demo-content {
+  @apply space-y-6;
+}
+
+.landing-demo-description {
+  @apply text-lg text-muted-foreground mb-8;
+}
+
+.landing-demo-button {
+  @apply h-12 px-8 text-base font-medium rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all flex items-center;
+}
+
+.landing-demo-visual {
+  @apply relative;
+}
+
+.landing-demo-browser {
+  @apply rounded-xl overflow-hidden border border-border/50 shadow-xl bg-card;
+}
+
+.landing-demo-browser-header {
+  @apply bg-muted p-3 flex items-center;
+}
+
+.landing-demo-browser-dots {
+  @apply flex gap-1.5;
+}
+
+.landing-demo-browser-dots span {
+  @apply w-3 h-3 rounded-full;
+}
+
+.landing-demo-browser-dots span:nth-child(1) {
+  @apply bg-red-500;
+}
+
+.landing-demo-browser-dots span:nth-child(2) {
+  @apply bg-yellow-500;
+}
+
+.landing-demo-browser-dots span:nth-child(3) {
+  @apply bg-green-500;
+}
+
+.landing-demo-browser-address {
+  @apply ml-4 text-xs bg-background/50 rounded-full px-3 py-1 text-muted-foreground;
+}
+
+.landing-demo-browser-content {
+  @apply relative overflow-hidden;
+}
+
+.landing-demo-image {
+  @apply w-full h-auto;
+}
+
+/* Parallax Section */
+.landing-parallax {
+  @apply relative h-[50vh] md:h-[70vh] overflow-hidden;
+}
+
+.landing-parallax-layers {
+  @apply absolute inset-0 w-full h-full;
+}
+
+.landing-parallax-layer {
+  @apply absolute inset-0 w-full h-full bg-cover bg-center;
+}
+
+.landing-parallax-bg {
+  background-image: url("/images/parallax-bg.png");
+}
+
+.landing-parallax-mid {
+  background-image: url("/images/parallax-mid.png");
+}
+
+.landing-parallax-front {
+  background-image: url("/images/parallax-front.png");
+}
+
+.landing-parallax-content {
+  @apply absolute inset-0 flex flex-col items-center justify-center text-center z-10 px-6;
+}
+
+.landing-parallax-title {
+  @apply text-3xl md:text-5xl font-bold mb-8 text-white drop-shadow-lg;
+}
+
+.landing-parallax-button {
+  @apply h-14 px-10 text-lg font-medium rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all;
+}
+
+/* Community Section */
+.landing-community {
+  @apply py-24 px-6;
+}
+
+.landing-community-grid {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto;
+}
+
+.landing-community-card {
+  @apply bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 flex flex-col items-center;
+}
+
+.landing-community-image {
+  @apply mb-4;
+}
+
+.landing-community-avatar {
+  @apply w-20 h-20 rounded-full object-cover border-4 border-purple-500/30;
+}
+
+.landing-community-quote {
+  @apply text-center text-muted-foreground italic;
+}
+
+/* CTA Section */
+.landing-cta {
+  @apply py-24 px-6 bg-gradient-to-b from-background/50 to-background;
+}
+
+.landing-cta-container {
+  @apply max-w-4xl mx-auto text-center;
+}
+
+.landing-cta-title {
+  @apply text-3xl md:text-5xl font-bold mb-4;
+}
+
+.landing-cta-subtitle {
+  @apply text-xl text-muted-foreground mb-8;
+}
+
+.landing-cta-buttons {
+  @apply flex flex-col sm:flex-row gap-4 justify-center;
+}
+
+.landing-cta-button-primary {
+  @apply h-14 px-10 text-lg font-medium rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all;
+}
+
+.landing-cta-button-secondary {
+  @apply h-14 px-10 text-lg font-medium rounded-full border-2 border-purple-500/30 hover:border-purple-500/50 bg-background/50 backdrop-blur-sm;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .landing-hero-title {
+    @apply text-4xl;
+  }
+
+  .landing-hero-subtitle {
+    @apply text-lg;
+  }
+
+  .landing-section-title {
+    @apply text-3xl;
+  }
+
+  .landing-parallax-title {
+    @apply text-3xl;
+  }
+
+  .landing-cta-title {
+    @apply text-3xl;
+  }
+}
+
+/* Animation utilities */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Locomotive scroll specific styles */
+[data-scroll] {
+  will-change: transform;
+}
+
+.c-scrollbar_thumb {
+  background-color: hsl(var(--primary) / 0.5);
+}
+
+/* Zoom effect for elements when scrolling */
+[data-scroll-speed] {
+  transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Light mode overrides */
+:root.light .landing-hero-button-secondary,
+:root.light .landing-cta-button-secondary {
+  @apply bg-white/50 border-purple-500/20 hover:border-purple-500/40;
+}
+
+:root.light .landing-feature-card,
+:root.light .landing-community-card {
+  @apply bg-white/50 border-gray-200/50;
+}
+
+:root.light .landing-demo-browser {
+  @apply bg-white border-gray-200/50;
+}
+
+:root.light .landing-demo-browser-header {
+  @apply bg-gray-100;
+}
+
+:root.light .landing-demo-browser-address {
+  @apply bg-white/80 text-gray-500;
+}
+
+:root.light .landing-feature-icon {
+  @apply bg-gradient-to-br from-purple-600/10 to-indigo-600/10 text-purple-600;
 }

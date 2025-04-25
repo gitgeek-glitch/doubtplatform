@@ -11,6 +11,7 @@ import { api } from "@/lib/api"
 import { useLocomotiveScroll } from "@/context/locomotive-context"
 import QuestionCard from "@/components/question-card"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/context/auth-context"
 
 interface Question {
   _id: string
@@ -38,17 +39,27 @@ export default function HomePage() {
   const [filter, setFilter] = useState("latest")
   const [category, setCategory] = useState("all")
   const { scroll } = useLocomotiveScroll()
+  const { isAuthenticated, isLoading } = useAuth()
 
   const searchQuery = searchParams.get("search") || ""
   const tag = searchParams.get("tag") || ""
 
+  // Redirect unauthenticated users to landing page
   useEffect(() => {
-    fetchQuestions()
-    // Reset scroll position when filter changes
-    if (scroll) {
-      scroll.scrollTo(0, { duration: 0, disableLerp: true })
+    if (!isLoading && !isAuthenticated) {
+      navigate('/')
     }
-  }, [filter, category, searchQuery, tag])
+  }, [isAuthenticated, isLoading, navigate])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchQuestions()
+      // Reset scroll position when filter changes
+      if (scroll) {
+        scroll.scrollTo(0, { duration: 0, disableLerp: true })
+      }
+    }
+  }, [filter, category, searchQuery, tag, isAuthenticated])
 
   const fetchQuestions = async (loadMore = false) => {
     try {
@@ -104,6 +115,10 @@ export default function HomePage() {
     { value: "ai", label: "AI & ML" },
     { value: "database", label: "Databases" },
   ]
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  }
 
   return (
     <div className="space-y-6" data-scroll-section>

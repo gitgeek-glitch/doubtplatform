@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -37,7 +37,7 @@ export default function Navbar() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      navigate(`/?search=${encodeURIComponent(searchQuery)}`)
+      navigate(`/home?search=${encodeURIComponent(searchQuery)}`)
       setMobileMenuOpen(false)
     }
   }
@@ -46,30 +46,42 @@ export default function Navbar() {
     setTheme(theme === "dark" ? "light" : "dark")
   }
 
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (isAuthenticated) {
+      navigate("/home")
+    } else {
+      navigate("/")
+    }
+  }
+
   return (
     <header className={cn("navbar", scrolled ? "navbar-scrolled" : "navbar-transparent")}>
       <div className="navbar-container">
         <div className="flex items-center gap-4">
-          <Link to="/" className="navbar-logo">
+          <a href="#" onClick={handleLogoClick} className="navbar-logo">
             <div className="navbar-logo-icon">
               <span className="text-lg font-bold text-white">DS</span>
             </div>
             <span className="navbar-logo-text">DoubtSolve</span>
-          </Link>
+          </a>
 
-          <form onSubmit={handleSearch} className="navbar-search">
-            <div className="relative group">
-              <Input
-                type="search"
-                placeholder="Search questions..."
-                className="navbar-search-input"
-                value={searchQuery}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-                autoComplete="off"
-              />
-              <Search className="navbar-search-icon" />
-            </div>
-          </form>
+          {/* Search bar only shown for authenticated users */}
+          {isAuthenticated && (
+            <form onSubmit={handleSearch} className="navbar-search">
+              <div className="relative group">
+                <Input
+                  type="search"
+                  placeholder="Search questions..."
+                  className="navbar-search-input"
+                  value={searchQuery}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                  autoComplete="off"
+                />
+                <Search className="navbar-search-icon" />
+              </div>
+            </form>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -155,17 +167,20 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="navbar-mobile-menu">
           <div className="navbar-mobile-container">
-            <form onSubmit={handleSearch} className="navbar-mobile-search">
-              <Input
-                type="search"
-                placeholder="Search questions..."
-                className="navbar-mobile-search-input"
-                value={searchQuery}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-                autoComplete="off"
-              />
-              <Search className="navbar-search-icon" />
-            </form>
+            {/* Mobile search only shown for authenticated users */}
+            {isAuthenticated && (
+              <form onSubmit={handleSearch} className="navbar-mobile-search">
+                <Input
+                  type="search"
+                  placeholder="Search questions..."
+                  className="navbar-mobile-search-input"
+                  value={searchQuery}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                  autoComplete="off"
+                />
+                <Search className="navbar-search-icon" />
+              </form>
+            )}
 
             <div className="flex flex-col gap-3">
               <Button
