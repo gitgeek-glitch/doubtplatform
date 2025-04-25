@@ -109,23 +109,23 @@ export default function Navbar() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col space-y-0.5 leading-none">
-                        <p className="font-medium text-sm text-white">{user?.name}</p>
-                        <p className="text-xs text-gray-400">{user?.email}</p>
+                        <p className="font-medium text-sm">{user?.name}</p>
+                        <p className="text-xs">{user?.email}</p>
                       </div>
                     </div>
-                    <DropdownMenuSeparator className="my-1 h-px bg-gray-800/70" />
+                    <DropdownMenuSeparator className="my-1 h-px bg-gray-300 dark:bg-gray-800" />
                     <DropdownMenuItem
                       onClick={() => navigate(`/profile/${user?._id}`)}
                       className="navbar-dropdown-item"
                     >
-                      <User className="mr-2 h-4 w-4 text-gray-400" />
+                      <User className="mr-2 h-4 w-4" />
                       <span>Profile</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem className="navbar-dropdown-item">
-                      <Settings className="mr-2 h-4 w-4 text-gray-400" />
+                      <Settings className="mr-2 h-4 w-4" />
                       <span>Settings</span>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="my-1 h-px bg-gray-800/70" />
+                    <DropdownMenuSeparator className="my-1 h-px bg-gray-300 dark:bg-gray-800" />
                     <DropdownMenuItem onClick={logout} className="navbar-dropdown-item-danger">
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>

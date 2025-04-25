@@ -393,7 +393,7 @@
   }
 
   .navbar-button {
-    @apply hidden md:flex bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-full px-5 text-sm font-medium shadow-md hover:shadow-lg transition-all;
+    @apply hidden md:flex h-9 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-full px-8 text-sm font-medium shadow-md hover:shadow-lg transition-all;
   }
 
   .navbar-avatar-container {
@@ -547,8 +547,8 @@
   }
 
   .ask-question-submit {
-    @apply bg-purple-600 hover:bg-purple-700;
-  }
+    @apply h-12 px-8 text-sm font-medium rounded-full bg-purple-600 hover:bg-purple-700 shadow-md hover:shadow-lg transition-all;
+  }  
 
   /* Question Detail Page Styles */
   .question-detail-grid {
