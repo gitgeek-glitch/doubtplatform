@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { CheckCircle2, XCircle, ArrowLeft } from "lucide-react"
 
 export default function AuthPage() {
   const navigate = useNavigate()
@@ -22,6 +23,7 @@ export default function AuthPage() {
   const [loginEmail, setLoginEmail] = useState("")
   const [loginPassword, setLoginPassword] = useState("")
   const [loggingIn, setLoggingIn] = useState(false)
+  const [loginEmailValid, setLoginEmailValid] = useState(true)
 
   // Register form state
   const [registerName, setRegisterName] = useState("")
@@ -29,11 +31,58 @@ export default function AuthPage() {
   const [registerPassword, setRegisterPassword] = useState("")
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState("")
   const [registering, setRegistering] = useState(false)
+  const [registerEmailValid, setRegisterEmailValid] = useState(true)
+
+  // Password validation criteria
+  const [passwordCriteria, setPasswordCriteria] = useState({
+    length: false,
+    letter: false,
+    number: false,
+    special: false,
+    match: false,
+  })
+
+  // Validate email format
+  const validateEmail = (email: string) => {
+    return email.includes("@") && email.endsWith(".ac.in")
+  }
+
+  // Update login email validation
+  useEffect(() => {
+    if (loginEmail) {
+      setLoginEmailValid(validateEmail(loginEmail))
+    } else {
+      setLoginEmailValid(true) // Don't show error for empty field
+    }
+  }, [loginEmail])
+
+  // Update register email validation
+  useEffect(() => {
+    if (registerEmail) {
+      setRegisterEmailValid(validateEmail(registerEmail))
+    } else {
+      setRegisterEmailValid(true) // Don't show error for empty field
+    }
+  }, [registerEmail])
+
+  // Update password criteria validation
+  useEffect(() => {
+    setPasswordCriteria({
+      length: registerPassword.length >= 6,
+      letter: /[a-zA-Z]/.test(registerPassword),
+      number: /[0-9]/.test(registerPassword),
+      special: /[^a-zA-Z0-9]/.test(registerPassword),
+      match: registerPassword === registerConfirmPassword && registerPassword !== "",
+    })
+  }, [registerPassword, registerConfirmPassword])
 
   // Use useEffect for navigation instead of conditional rendering
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/")
+      // Add a small delay to ensure toast is shown before navigation
+      setTimeout(() => {
+        navigate("/home")
+      }, 500)
     }
   }, [isAuthenticated, navigate])
 
@@ -50,7 +99,7 @@ export default function AuthPage() {
     }
 
     // Validate email format
-    if (!loginEmail.includes("@") || !loginEmail.endsWith(".ac.in")) {
+    if (!validateEmail(loginEmail)) {
       toast({
         title: "Invalid email",
         description: "Please use your college email (ending with .ac.in)",
@@ -61,11 +110,20 @@ export default function AuthPage() {
 
     try {
       setLoggingIn(true)
+      
+
+
+
       await login(loginEmail, loginPassword)
-      navigate("/")
+
+      
     } catch (error) {
-      // Error is handled in the auth context
       console.error("Login error:", error)
+      toast({
+        title: "Login failed",
+        description: "Invalid email or password. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setLoggingIn(false)
     }
@@ -84,7 +142,7 @@ export default function AuthPage() {
     }
 
     // Validate email format
-    if (!registerEmail.includes("@") || !registerEmail.endsWith(".ac.in")) {
+    if (!validateEmail(registerEmail)) {
       toast({
         title: "Invalid email",
         description: "Please use your college email (ending with .ac.in)",
@@ -111,62 +169,92 @@ export default function AuthPage() {
       return
     }
 
+    // Check all password criteria
+    const allCriteriaMet = Object.values(passwordCriteria).every((criterion) => criterion)
+    if (!allCriteriaMet) {
+      toast({
+        title: "Password requirements not met",
+        description: "Please ensure your password meets all the requirements",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       setRegistering(true)
+      
+
       await register(registerName, registerEmail, registerPassword)
-      // Navigation will happen automatically via the useEffect when isAuthenticated changes
+      
+      // Show success toast - this might also be shown in auth-context
+      toast({
+        title: "Registration successful",
+        description: "Your account has been created successfully!",
+      })
+      
     } catch (error) {
-      // Add explicit error logging
       console.error("Registration error:", error)
+      toast({
+        title: "Registration failed",
+        description: "Could not create your account. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setRegistering(false)
     }
   }
 
   return (
-    <div className="auth-container">
+    <div className="auth-page-wrapper">
       <div className="auth-card">
+        <div className="flex items-center mb-2">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="mr-2">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </div>
+
         <div className="auth-header">
           <h1 className="auth-title">Welcome to DoubtSolve</h1>
           <p className="auth-subtitle">Your college doubt-solving platform</p>
         </div>
 
-        <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="auth-tabs-list">
-            <TabsTrigger 
-              value="login" 
-              className={cn(activeTab === "login" && "auth-tab-active")}
-            >
+            <TabsTrigger value="login" className="auth-tab-active">
               Login
             </TabsTrigger>
-            <TabsTrigger 
-              value="register" 
-              className={cn(activeTab === "register" && "auth-tab-active")}
-            >
+            <TabsTrigger value="register" className="auth-tab-active">
               Register
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="login" className="mt-6">
+          <TabsContent value="login" className="space-y-4">
             <form onSubmit={handleLogin} className="auth-form">
               <div className="auth-field">
-                <Label htmlFor="email">College Email</Label>
+                <Label htmlFor="email" className="block">
+                  College Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="studentname.is22@bmsce.ac.in"
                   value={loginEmail}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginEmail(e.target.value)}
-                  className="auth-input"
+                  className={cn("auth-input", !loginEmailValid && loginEmail && "auth-input-error")}
                   autoComplete="username"
                   required
                 />
+                {!loginEmailValid && loginEmail && (
+                  <p className="auth-error-message">Please use your college email (ending with .ac.in)</p>
+                )}
               </div>
 
               <div className="auth-field">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Button variant="link" className="p-0 h-auto text-xs text-purple-400">
+                  <Label htmlFor="password" className="block">
+                    Password
+                  </Label>
+                  <Button variant="link" className="auth-forgot-password">
                     Forgot password?
                   </Button>
                 </div>
@@ -185,13 +273,22 @@ export default function AuthPage() {
               <Button type="submit" className="auth-submit" disabled={loggingIn}>
                 {loggingIn ? "Signing in..." : "Sign In"}
               </Button>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Not registered yet?{" "}
+                <Button variant="link" onClick={() => setActiveTab("register")} className="auth-link">
+                  Create an account
+                </Button>
+              </p>
             </form>
           </TabsContent>
 
-          <TabsContent value="register" className="mt-6">
+          <TabsContent value="register" className="space-y-4">
             <form onSubmit={handleRegister} className="auth-form">
               <div className="auth-field">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name" className="block">
+                  Full Name
+                </Label>
                 <Input
                   id="name"
                   placeholder="John Doe"
@@ -203,21 +300,28 @@ export default function AuthPage() {
               </div>
 
               <div className="auth-field">
-                <Label htmlFor="register-email">College Email</Label>
+                <Label htmlFor="register-email" className="block">
+                  College Email
+                </Label>
                 <Input
                   id="register-email"
                   type="email"
                   placeholder="studentname.is22@bmsce.ac.in"
                   value={registerEmail}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRegisterEmail(e.target.value)}
-                  className="auth-input"
+                  className={cn("auth-input", !registerEmailValid && registerEmail && "auth-input-error")}
                   required
                 />
+                {!registerEmailValid && registerEmail && (
+                  <p className="auth-error-message">Please use your college email (ending with .ac.in)</p>
+                )}
                 <p className="auth-hint">Must be your institutional email ending with .ac.in</p>
               </div>
 
               <div className="auth-field">
-                <Label htmlFor="register-password">Password</Label>
+                <Label htmlFor="register-password" className="block">
+                  Password
+                </Label>
                 <Input
                   id="register-password"
                   type="password"
@@ -228,25 +332,94 @@ export default function AuthPage() {
                   required
                   autoComplete="new-password"
                 />
+                <div className="auth-password-criteria">
+                  <p className="auth-password-criteria-title">Password must:</p>
+                  <ul className="auth-password-criteria-list">
+                    <li
+                      className={cn(
+                        "auth-password-criteria-item",
+                        passwordCriteria.length ? "auth-criteria-met" : "auth-criteria-unmet",
+                      )}
+                    >
+                      {passwordCriteria.length ? (
+                        <CheckCircle2 className="auth-criteria-icon" />
+                      ) : (
+                        <XCircle className="auth-criteria-icon" />
+                      )}
+                      <span>Be at least 6 characters long</span>
+                    </li>
+                    <li
+                      className={cn(
+                        "auth-password-criteria-item",
+                        passwordCriteria.letter ? "auth-criteria-met" : "auth-criteria-unmet",
+                      )}
+                    >
+                      {passwordCriteria.letter ? (
+                        <CheckCircle2 className="auth-criteria-icon" />
+                      ) : (
+                        <XCircle className="auth-criteria-icon" />
+                      )}
+                      <span>Contain at least one letter</span>
+                    </li>
+                    <li
+                      className={cn(
+                        "auth-password-criteria-item",
+                        passwordCriteria.number ? "auth-criteria-met" : "auth-criteria-unmet",
+                      )}
+                    >
+                      {passwordCriteria.number ? (
+                        <CheckCircle2 className="auth-criteria-icon" />
+                      ) : (
+                        <XCircle className="auth-criteria-icon" />
+                      )}
+                      <span>Contain at least one number</span>
+                    </li>
+                    <li
+                      className={cn(
+                        "auth-password-criteria-item",
+                        passwordCriteria.special ? "auth-criteria-met" : "auth-criteria-unmet",
+                      )}
+                    >
+                      {passwordCriteria.special ? (
+                        <CheckCircle2 className="auth-criteria-icon" />
+                      ) : (
+                        <XCircle className="auth-criteria-icon" />
+                      )}
+                      <span>Contain at least one special character</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
 
               <div className="auth-field">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Label htmlFor="confirm-password" className="block">
+                  Confirm Password
+                </Label>
                 <Input
                   id="confirm-password"
                   type="password"
                   placeholder="••••••••"
                   value={registerConfirmPassword}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRegisterConfirmPassword(e.target.value)}
-                  className="auth-input"
+                  className={cn("auth-input", registerConfirmPassword && !passwordCriteria.match && "auth-input-error")}
                   required
                   autoComplete="new-password"
                 />
+                {registerConfirmPassword && !passwordCriteria.match && (
+                  <p className="auth-error-message">Passwords do not match</p>
+                )}
               </div>
 
               <Button type="submit" className="auth-submit" disabled={registering}>
                 {registering ? "Creating account..." : "Create Account"}
               </Button>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Already a user?{" "}
+                <Button variant="link" onClick={() => setActiveTab("login")} className="auth-link">
+                  Sign in
+                </Button>
+              </p>
             </form>
           </TabsContent>
         </Tabs>
