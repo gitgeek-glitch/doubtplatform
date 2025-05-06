@@ -1,6 +1,6 @@
 "use client"
 
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom"
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
 import Navbar from "@/components/navbar"
@@ -20,6 +20,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
+    // You could show a loading spinner here
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   }
 
@@ -45,84 +46,74 @@ const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>
 }
 
-// Layout component that conditionally renders the navbar
-const AppLayout = () => {
-  const location = useLocation();
-  const isAuthPage = location.pathname === '/auth';
-  
-  return (
-    <div className="min-h-screen bg-background text-foreground" data-scroll-container>
-      {!isAuthPage && <Navbar />}
-      <main className="container mx-auto px-4 py-8">
-        <Routes>
-          {/* Public routes */}
-          <Route
-            path="/"
-            element={
-              <PublicOnlyRoute>
-                <LandingPage />
-              </PublicOnlyRoute>
-            }
-          />
-          <Route
-            path="/auth"
-            element={
-              <PublicOnlyRoute>
-                <AuthPage />
-              </PublicOnlyRoute>
-            }
-          />
-
-          {/* Protected routes */}
-          <Route
-            path="/home"
-            element={
-              <ProtectedRoute>
-                <HomePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/question/:id"
-            element={
-              <ProtectedRoute>
-                <QuestionDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/ask"
-            element={
-              <ProtectedRoute>
-                <AskQuestionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile/:id"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* 404 route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </main>
-      <Toaster />
-    </div>
-  );
-};
-
 function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="doubt-platform-theme">
       <Router>
         <AuthProvider>
           <LocomotiveScrollProvider>
-            <AppLayout />
+            <div className="min-h-screen bg-background text-foreground" data-scroll-container>
+              <Navbar />
+              <main className="container mx-auto px-4 py-8">
+              <Routes>
+                  {/* Public routes */}
+                  <Route
+                    path="/"
+                    element={
+                      <PublicOnlyRoute>
+                        <LandingPage />
+                      </PublicOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="/auth"
+                    element={
+                      <PublicOnlyRoute>
+                        <AuthPage />
+                      </PublicOnlyRoute>
+                    }
+                  />
+
+                  {/* Protected routes */}
+                  <Route
+                    path="/home"
+                    element={
+                      <ProtectedRoute>
+                        <HomePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/question/:id"
+                    element={
+                      <ProtectedRoute>
+                        <QuestionDetailPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/ask"
+                    element={
+                      <ProtectedRoute>
+                        <AskQuestionPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile/:id"
+                    element={
+                      <ProtectedRoute>
+                        <ProfilePage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* 404 route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
+              <Toaster />
+            </div>
           </LocomotiveScrollProvider>
         </AuthProvider>
       </Router>
