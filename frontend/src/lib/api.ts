@@ -45,7 +45,14 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Clear token if unauthorized
       localStorage.removeItem("token")
-      window.location.href = "/auth"
+      
+      // Remove auth header
+      delete api.defaults.headers.common["Authorization"]
+      
+      // Redirect to login page if not already there
+      if (window.location.pathname !== "/auth") {
+        window.location.href = "/auth"
+      }
     }
     
     return Promise.reject(error)
@@ -57,3 +64,5 @@ export const hasValidToken = () => {
   const token = localStorage.getItem("token")
   return !!token
 }
+
+export default api

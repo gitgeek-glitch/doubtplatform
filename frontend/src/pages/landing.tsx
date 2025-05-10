@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
+import { useAppSelector } from "@/redux/hooks"
 import { useLocomotiveScroll } from "@/context/locomotive-context"
 import { ArrowRight, Code, Brain, Zap, ChevronDown } from 'lucide-react'
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/context/auth-context"
 
 export default function LandingPage() {
   const { scroll } = useLocomotiveScroll()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAppSelector(state => state.auth)
   const navigate = useNavigate()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isLoaded, setIsLoaded] = useState(false)

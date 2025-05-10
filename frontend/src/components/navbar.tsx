@@ -3,6 +3,8 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { useAppDispatch, useAppSelector } from "@/redux/hooks"
+import { logout } from "@/redux/slices/authSlice"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -13,15 +15,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Search, Menu, X, LogOut, User, Settings, Bell, Moon, Sun } from "lucide-react"
-import { useAuth } from "@/context/auth-context"
+import { Search, Menu, X, LogOut, User, Settings, Bell, Moon, Sun } from 'lucide-react'
 import { useTheme } from "@/components/theme-provider"
+import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
 export default function Navbar() {
-  const { user, logout, isAuthenticated } = useAuth()
+  const { user, isAuthenticated } = useAppSelector(state => state.auth)
   const { theme, setTheme } = useTheme()
+  const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [scrolled, setScrolled] = useState(false)
@@ -53,6 +57,15 @@ export default function Navbar() {
     } else {
       navigate("/")
     }
+  }
+
+  const handleLogout = () => {
+    dispatch(logout())
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out",
+    })
+    navigate("/")
   }
 
   return (
@@ -138,7 +151,7 @@ export default function Navbar() {
                       <span>Settings</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 h-px bg-gray-300 dark:bg-gray-800" />
-                    <DropdownMenuItem onClick={logout} className="navbar-dropdown-item-danger">
+                    <DropdownMenuItem onClick={handleLogout} className="navbar-dropdown-item-danger">
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
                     </DropdownMenuItem>
@@ -229,8 +242,9 @@ export default function Navbar() {
                       variant="ghost"
                       className="navbar-mobile-menu-item"
                       onClick={() => {
-                        logout()
+                        dispatch(logout())
                         setMobileMenuOpen(false)
+                        navigate("/")
                       }}
                     >
                       <LogOut className="mr-3 h-5 w-5 text-red-400" />

@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
+import { useAppDispatch, useAppSelector } from "@/redux/hooks"
+import { fetchUserProfile, resetUserState } from "@/redux/slices/usersSlice"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -9,84 +11,31 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { MessageSquare, Award, Calendar, Edit, ArrowUp } from 'lucide-react'
 import { formatDistanceToNow } from "date-fns"
-import { api } from "@/lib/api"
-import { useAuth } from "@/context/auth-context"
-import { useToast } from "@/hooks/use-toast"
 import QuestionCard from "@/components/question-card"
 import { cn } from "@/lib/utils"
 
-interface User {
-  _id: string
-  name: string
-  email: string
-  bio: string
-  avatar?: string
-  reputation: number
-  badges: string[]
-  createdAt: string
-  questionsCount: number
-  answersCount: number
-}
-
-interface Question {
-  _id: string
-  title: string
-  content: string
-  tags: string[]
-  upvotes: number
-  downvotes: number
-  answerCount: number
-  author: {
-    _id: string
-    name: string
-    avatar?: string
-  }
-  createdAt: string
-}
-
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
-  const { user: currentUser } = useAuth()
-  const { toast } = useToast()
-  const [user, setUser] = useState<User | null>(null)
-  const [questions, setQuestions] = useState<Question[]>([])
-  const [answers, setAnswers] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const dispatch = useAppDispatch()
+  const { currentProfile: user, userQuestions: questions, userAnswers: answers, loading } = useAppSelector(state => state.users)
+  const { user: currentUser } = useAppSelector(state => state.auth)
   const [activeTab, setActiveTab] = useState("questions")
 
   const isOwnProfile = currentUser?._id === id
 
   useEffect(() => {
     if (id) {
-      fetchUserProfile()
+      dispatch(fetchUserProfile(id))
     }
-  }, [id])
-
-  const fetchUserProfile = async () => {
-    try {
-      setLoading(true)
-      const [userRes, questionsRes, answersRes] = await Promise.all([
-        api.get(`/users/${id}`),
-        api.get(`/users/${id}/questions`),
-        api.get(`/users/${id}/answers`),
-      ])
-
-      setUser(userRes.data)
-      setQuestions(questionsRes.data)
-      setAnswers(answersRes.data)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load user profile",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
+    
+    // Cleanup on unmount
+    return () => {
+      dispatch(resetUserState())
     }
-  }
+  }, [id, dispatch])
 
   // Badge colors based on level
-  const getBadgeColor = (badge: string) => {
+  const getBadgeColor = (badge: string): string => {
     if (badge.includes("Gold")) return "profile-badge-gold"
     if (badge.includes("Silver")) return "profile-badge-silver"
     if (badge.includes("Bronze")) return "profile-badge-bronze"
@@ -187,9 +136,9 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {user.badges.length > 0 && (
+            {user.badges && user.badges.length > 0 && (
               <div className="profile-badges">
-                {user.badges.map((badge, index) => (
+                {user.badges.map((badge: string, index: number) => (
                   <Badge key={index} className={getBadgeColor(badge)}>
                     {badge}
                   </Badge>
@@ -219,7 +168,7 @@ export default function ProfilePage() {
 
         <TabsContent value="questions" className="profile-content">
           {questions.length > 0 ? (
-            questions.map((question) => <QuestionCard key={question._id} question={question} />)
+            questions.map((question: any) => <QuestionCard key={question._id} question={question} />)
           ) : (
             <div className="profile-empty-state">
               <p className="text-muted-foreground">No questions asked yet</p>
@@ -229,7 +178,7 @@ export default function ProfilePage() {
 
         <TabsContent value="answers" className="profile-content">
           {answers.length > 0 ? (
-            answers.map((answer) => (
+            answers.map((answer: any) => (
               <div key={answer._id} className="profile-answer-card">
                 <div className="mb-4">
                   <Link to={`/question/${answer.question._id}`} className="profile-answer-title">

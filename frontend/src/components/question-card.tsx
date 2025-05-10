@@ -2,16 +2,16 @@
 
 import { useState } from "react"
 import { Link } from "react-router-dom"
+import { useAppSelector } from "@/redux/hooks"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { ArrowUp, ArrowDown, MessageSquare, Eye } from "lucide-react"
+import { ArrowUp, ArrowDown, MessageSquare, Eye } from 'lucide-react'
 import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/context/auth-context"
-import { api } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { api } from "@/lib/api"
 
 interface QuestionCardProps {
   question: {
@@ -33,7 +33,7 @@ interface QuestionCardProps {
 }
 
 export default function QuestionCard({ question }: QuestionCardProps) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAppSelector(state => state.auth)
   const { toast } = useToast()
   const [votes, setVotes] = useState({
     upvotes: question.upvotes,

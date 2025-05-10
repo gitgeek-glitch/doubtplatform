@@ -1,24 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { useAppDispatch, useAppSelector } from "@/redux/hooks"
+import { addToast, dismissToast } from "@/redux/slices/uiSlice"
 
-type ToastProps = {
+export type ToastProps = {
+  id: string
   title?: string
   description?: string
   variant?: "default" | "destructive"
 }
 
 export function useToast() {
-  const [toasts, setToasts] = useState<ToastProps[]>([])
+  const dispatch = useAppDispatch()
+  const toasts = useAppSelector(state => state.ui.toasts)
 
-  const toast = (props: ToastProps) => {
-    setToasts((prev) => [...prev, props])
-
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t !== props))
-    }, 5000)
+  const toast = (props: Omit<ToastProps, "id">) => {
+    dispatch(addToast(props))
+    return props.title || props.description || ""
   }
 
-  return { toast, toasts }
+  const dismiss = (id: string) => {
+    dispatch(dismissToast(id))
+  }
+
+  return { toast, dismiss, toasts }
 }

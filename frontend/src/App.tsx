@@ -1,8 +1,12 @@
 "use client"
 
+import { useEffect } from "react"
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
-import { Toaster } from "@/components/ui/toaster"
+import { useAppDispatch, useAppSelector } from "./redux/hooks"
+import { checkAuthStatus } from "./redux/slices/authSlice"
 import { ThemeProvider } from "@/components/theme-provider"
+import { LocomotiveScrollProvider } from "@/context/locomotive-context"
+import { Toaster } from "@/components/ui/toaster"
 import Navbar from "@/components/navbar"
 import HomePage from "@/pages/home"
 import LandingPage from "@/pages/landing"
@@ -10,17 +14,14 @@ import QuestionDetailPage from "@/pages/question-detail"
 import AskQuestionPage from "@/pages/ask-question"
 import ProfilePage from "@/pages/profile"
 import AuthPage from "@/pages/auth"
-import { AuthProvider } from "@/context/auth-context"
-import { LocomotiveScrollProvider } from "@/context/locomotive-context"
 import NotFound from "@/pages/not-found"
 import { ThemeToggle } from "./components/theme-toggle"
-import { useAuth } from "@/context/auth-context"
 
+// Protected route component that uses Redux state
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading } = useAppSelector(state => state.auth)
 
   if (isLoading) {
-    // You could show a loading spinner here
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   }
 
@@ -33,7 +34,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Public route that redirects authenticated users to home
 const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading } = useAppSelector(state => state.auth)
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>
@@ -47,77 +48,88 @@ const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 }
 
 function App() {
+  const dispatch = useAppDispatch()
+  const { isLoading } = useAppSelector(state => state.auth)
+  
+  useEffect(() => {
+    dispatch(checkAuthStatus())
+  }, [dispatch])
+  
+  // Show global loading state during initial auth check
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  }
+  
   return (
     <ThemeProvider defaultTheme="dark" storageKey="doubt-platform-theme">
       <Router>
-        <AuthProvider>
-          <LocomotiveScrollProvider>
-            <div className="min-h-screen bg-background text-foreground" data-scroll-container>
-              <Navbar />
-              <main className="container mx-auto px-4 py-8">
+        <LocomotiveScrollProvider>
+          <div className="min-h-screen bg-background text-foreground" data-scroll-container>
+            <Navbar />
+            <main className="container mx-auto px-4 py-8">
               <Routes>
-                  {/* Public routes */}
-                  <Route
-                    path="/"
-                    element={
-                      <PublicOnlyRoute>
-                        <LandingPage />
-                      </PublicOnlyRoute>
-                    }
-                  />
-                  <Route
-                    path="/auth"
-                    element={
-                      <PublicOnlyRoute>
-                        <AuthPage />
-                      </PublicOnlyRoute>
-                    }
-                  />
+                {/* Public routes */}
+                <Route
+                  path="/"
+                  element={
+                    <PublicOnlyRoute>
+                      <LandingPage />
+                    </PublicOnlyRoute>
+                  }
+                />
+                <Route
+                  path="/auth"
+                  element={
+                    <PublicOnlyRoute>
+                      <AuthPage />
+                    </PublicOnlyRoute>
+                  }
+                />
 
-                  {/* Protected routes */}
-                  <Route
-                    path="/home"
-                    element={
-                      <ProtectedRoute>
-                        <HomePage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/question/:id"
-                    element={
-                      <ProtectedRoute>
-                        <QuestionDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/ask"
-                    element={
-                      <ProtectedRoute>
-                        <AskQuestionPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/profile/:id"
-                    element={
-                      <ProtectedRoute>
-                        <ProfilePage />
-                      </ProtectedRoute>
-                    }
-                  />
+                {/* Protected routes */}
+                <Route
+                  path="/home"
+                  element={
+                    <ProtectedRoute>
+                      <HomePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/question/:id"
+                  element={
+                    <ProtectedRoute>
+                      <QuestionDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/ask"
+                  element={
+                    <ProtectedRoute>
+                      <AskQuestionPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/:id"
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
 
-                  {/* 404 route */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </main>
-              <Toaster />
-            </div>
-          </LocomotiveScrollProvider>
-        </AuthProvider>
+                {/* 404 route */}
+                <Route path="/404" element={<NotFound />} />
+                <Route path="*" element={<Navigate to="/404" replace />} />
+              </Routes>
+            </main>
+            <Toaster />
+            <ThemeToggle />
+          </div>
+        </LocomotiveScrollProvider>
       </Router>
-      <ThemeToggle/>
     </ThemeProvider>
   )
 }

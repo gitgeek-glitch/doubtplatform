@@ -1,9 +1,17 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
+import { useAppDispatch, useAppSelector } from "@/redux/hooks"
+import {
+  fetchQuestionDetails,
+  fetchVotes,
+  voteQuestion,
+  voteAnswer,
+  acceptAnswer,
+  submitAnswer,
+  resetQuestionState,
+} from "@/redux/slices/questionsSlice"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,94 +20,44 @@ import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowUp, ArrowDown, MessageSquare, Check, Share2 } from 'lucide-react'
 import { formatDistanceToNow } from "date-fns"
-import { api } from "@/lib/api"
-import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import MarkdownRenderer from "@/components/markdown-renderer"
 
-interface Author {
-  _id: string
-  name: string
-  avatar?: string
-  reputation: number
-}
-
-interface Question {
-  _id: string
-  title: string
-  content: string
-  tags: string[]
-  upvotes: number
-  downvotes: number
-  author: Author
-  createdAt: string
-}
-
-interface Answer {
-  _id: string
-  content: string
-  upvotes: number
-  downvotes: number
-  author: Author
-  isAccepted: boolean
-  createdAt: string
-}
-
 export default function QuestionDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { user, isAuthenticated } = useAuth()
+  const dispatch = useAppDispatch()
   const { toast } = useToast()
-  const [question, setQuestion] = useState<Question | null>(null)
-  const [answers, setAnswers] = useState<Answer[]>([])
-  const [relatedQuestions, setRelatedQuestions] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const { user, isAuthenticated } = useAppSelector(state => state.auth)
+  const {
+    currentQuestion: question,
+    answers,
+    relatedQuestions,
+    loading,
+    questionVote,
+    answerVotes,
+  } = useAppSelector(state => state.questions)
   const [answerContent, setAnswerContent] = useState("")
   const [submitting, setSubmitting] = useState(false)
-  const [questionVote, setQuestionVote] = useState(0)
-  const [answerVotes, setAnswerVotes] = useState<Record<string, number>>({})
 
+  // Fetch question details on mount
   useEffect(() => {
     if (id) {
-      fetchQuestionDetails()
-    }
-  }, [id])
-
-  const fetchQuestionDetails = async () => {
-    try {
-      setLoading(true)
-      const [questionRes, answersRes, relatedRes] = await Promise.all([
-        api.get(`/questions/${id}`),
-        api.get(`/questions/${id}/answers`),
-        api.get(`/questions/${id}/related`),
-      ])
-
-      setQuestion(questionRes.data)
-      setAnswers(answersRes.data)
-      setRelatedQuestions(relatedRes.data)
-
-      // Initialize vote states
+      dispatch(fetchQuestionDetails(id))
+      
+      // Fetch votes if authenticated
       if (isAuthenticated) {
-        const votesRes = await api.get(`/questions/${id}/votes`)
-        setQuestionVote(votesRes.data.questionVote || 0)
-
-        const answerVotesObj: Record<string, number> = {}
-        votesRes.data.answerVotes.forEach((vote: any) => {
-          answerVotesObj[vote.answerId] = vote.value
-        })
-        setAnswerVotes(answerVotesObj)
+        dispatch(fetchVotes(id))
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load question details",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
     }
-  }
+    
+    // Cleanup on unmount
+    return () => {
+      dispatch(resetQuestionState())
+    }
+  }, [id, isAuthenticated, dispatch])
 
+  // Handle question vote
   const handleQuestionVote = async (value: number) => {
     if (!isAuthenticated) {
       toast({
@@ -110,28 +68,12 @@ export default function QuestionDetailPage() {
       return
     }
 
+    if (!id) return
+
     try {
       // If user already voted the same way, remove the vote
       const finalValue = questionVote === value ? 0 : value
-
-      await api.post(`/questions/${id}/vote`, { value: finalValue })
-
-      setQuestionVote(finalValue)
-
-      // Update question vote count
-      if (question) {
-        const updatedQuestion = { ...question }
-
-        // Remove previous vote if any
-        if (questionVote === 1) updatedQuestion.upvotes--
-        if (questionVote === -1) updatedQuestion.downvotes--
-
-        // Add new vote if not removing
-        if (finalValue === 1) updatedQuestion.upvotes++
-        if (finalValue === -1) updatedQuestion.downvotes++
-
-        setQuestion(updatedQuestion)
-      }
+      dispatch(voteQuestion({ questionId: id, value: finalValue }))
     } catch (error) {
       toast({
         title: "Error",
@@ -141,6 +83,7 @@ export default function QuestionDetailPage() {
     }
   }
 
+  // Handle answer vote
   const handleAnswerVote = async (answerId: string, value: number) => {
     if (!isAuthenticated) {
       toast({
@@ -155,33 +98,8 @@ export default function QuestionDetailPage() {
       const currentVote = answerVotes[answerId] || 0
       // If user already voted the same way, remove the vote
       const finalValue = currentVote === value ? 0 : value
-
-      await api.post(`/answers/${answerId}/vote`, { value: finalValue })
-
-      setAnswerVotes((prev) => ({
-        ...prev,
-        [answerId]: finalValue,
-      }))
-
-      // Update answer vote count
-      setAnswers((prev) =>
-        prev.map((answer) => {
-          if (answer._id === answerId) {
-            const updatedAnswer = { ...answer }
-
-            // Remove previous vote if any
-            if (currentVote === 1) updatedAnswer.upvotes--
-            if (currentVote === -1) updatedAnswer.downvotes--
-
-            // Add new vote if not removing
-            if (finalValue === 1) updatedAnswer.upvotes++
-            if (finalValue === -1) updatedAnswer.downvotes++
-
-            return updatedAnswer
-          }
-          return answer
-        }),
-      )
+      
+      dispatch(voteAnswer({ answerId, value: finalValue }))
     } catch (error) {
       toast({
         title: "Error",
@@ -191,6 +109,7 @@ export default function QuestionDetailPage() {
     }
   }
 
+  // Handle accept answer
   const handleAcceptAnswer = async (answerId: string) => {
     if (!isAuthenticated || !question || user?._id !== question.author._id) {
       toast({
@@ -202,15 +121,8 @@ export default function QuestionDetailPage() {
     }
 
     try {
-      await api.post(`/answers/${answerId}/accept`)
-
-      setAnswers((prev) =>
-        prev.map((answer) => ({
-          ...answer,
-          isAccepted: answer._id === answerId,
-        })),
-      )
-
+      dispatch(acceptAnswer(answerId))
+      
       toast({
         title: "Answer accepted",
         description: "You've marked this answer as accepted",
@@ -224,6 +136,7 @@ export default function QuestionDetailPage() {
     }
   }
 
+  // Handle submit answer
   const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -245,13 +158,11 @@ export default function QuestionDetailPage() {
       return
     }
 
+    if (!id) return
+
     try {
       setSubmitting(true)
-      const response = await api.post(`/questions/${id}/answers`, {
-        content: answerContent,
-      })
-
-      setAnswers((prev) => [...prev, response.data])
+      await dispatch(submitAnswer({ questionId: id, content: answerContent }))
       setAnswerContent("")
 
       toast({
@@ -269,6 +180,7 @@ export default function QuestionDetailPage() {
     }
   }
 
+  // Handle share question
   const handleShareQuestion = () => {
     navigator.clipboard.writeText(window.location.href)
     toast({

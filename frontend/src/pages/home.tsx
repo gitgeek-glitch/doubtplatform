@@ -1,48 +1,44 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSearchParams, useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { useNavigate, useLocation } from "react-router-dom"
+import { useAppDispatch, useAppSelector } from "@/redux/hooks"
+import { fetchQuestions, setFilter, setCategory } from "@/redux/slices/questionsSlice"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MessageSquare, Clock, TrendingUp } from 'lucide-react'
-import { api } from "@/lib/api"
-import { useLocomotiveScroll } from "@/context/locomotive-context"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { MessageSquare, Clock, TrendingUp, PlusCircle } from 'lucide-react'
 import QuestionCard from "@/components/question-card"
+import { useLocomotiveScroll } from "@/context/locomotive-context"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/context/auth-context"
-
-interface Question {
-  _id: string
-  title: string
-  content: string
-  tags: string[]
-  upvotes: number
-  downvotes: number
-  answerCount: number
-  author: {
-    _id: string
-    name: string
-    avatar?: string
-  }
-  createdAt: string
-}
 
 export default function HomePage() {
-  const [searchParams] = useSearchParams()
-  const [questions, setQuestions] = useState<Question[]>([])
-  const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const navigate = useNavigate();
-  const [hasMore, setHasMore] = useState(true)
-  const [filter, setFilter] = useState("latest")
-  const [category, setCategory] = useState("all")
+  const dispatch = useAppDispatch()
+  const { questions, loading, hasMore, filter, category } = useAppSelector(state => state.questions)
+  const { isAuthenticated, isLoading } = useAppSelector(state => state.auth)
+  const navigate = useNavigate()
+  const location = useLocation()
   const { scroll } = useLocomotiveScroll()
-  const { isAuthenticated, isLoading } = useAuth()
+  const [searchParams, setSearchParams] = useState({
+    search: "",
+    tag: "",
+  })
 
-  const searchQuery = searchParams.get("search") || ""
-  const tag = searchParams.get("tag") || ""
+  // Parse query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const search = params.get("search") || ""
+    const tag = params.get("tag") || ""
+    
+    setSearchParams({ search, tag })
+  }, [location.search])
 
   // Redirect unauthenticated users to landing page
   useEffect(() => {
@@ -51,57 +47,46 @@ export default function HomePage() {
     }
   }, [isAuthenticated, isLoading, navigate])
 
+  // Fetch questions on initial load and when filters change
   useEffect(() => {
     if (isAuthenticated) {
-      fetchQuestions()
+      dispatch(
+        fetchQuestions({
+          filter,
+          category,
+          search: searchParams.search,
+          tag: searchParams.tag,
+        })
+      )
+      
       // Reset scroll position when filter changes
       if (scroll) {
         scroll.scrollTo(0, { duration: 0, disableLerp: true })
       }
     }
-  }, [filter, category, searchQuery, tag, isAuthenticated])
+  }, [dispatch, filter, category, searchParams, isAuthenticated, scroll])
 
-  const fetchQuestions = async (loadMore = false) => {
-    try {
-      if (loadMore) {
-        setPage((prev) => prev + 1)
-      } else {
-        setLoading(true)
-        setPage(1)
-      }
-
-      const params = new URLSearchParams({
-        page: loadMore ? String(page + 1) : "1",
-        limit: "10",
-        sort: filter,
-        ...(category !== "all" && { category }),
-        ...(searchQuery && { search: searchQuery }),
-        ...(tag && { tag }),
-      })
-
-      const response = await api.get(`/questions?${params}`)
-
-      if (loadMore) {
-        setQuestions((prev) => [...prev, ...(response.data.questions || [])])
-      } else {
-        setQuestions(response.data.questions || [])
-      }
-
-      setHasMore(response.data.questions && response.data.questions.length === 10)
-    } catch (error) {
-      console.error("Error fetching questions:", error)
-      // Set questions to empty array if there's an error
-      if (!loadMore) {
-        setQuestions([])
-      }
-      setHasMore(false)
-    } finally {
-      setLoading(false)
-    }
+  // Handle filter change
+  const handleFilterChange = (value: string) => {
+    dispatch(setFilter(value))
   }
 
+  // Handle category change
+  const handleCategoryChange = (value: string) => {
+    dispatch(setCategory(value))
+  }
+
+  // Load more questions
   const handleLoadMore = () => {
-    fetchQuestions(true)
+    dispatch(
+      fetchQuestions({
+        filter,
+        category,
+        search: searchParams.search,
+        tag: searchParams.tag,
+        loadMore: true,
+      })
+    )
   }
 
   // Categories for filtering
@@ -125,17 +110,17 @@ export default function HomePage() {
       <div className="home-header">
         <div>
           <h1 className="home-title">
-            {searchQuery
-              ? `Search results for "${searchQuery}"`
-              : tag
-                ? `Questions tagged with "${tag}"`
+            {searchParams.search
+              ? `Search results for "${searchParams.search}"`
+              : searchParams.tag
+                ? `Questions tagged with "${searchParams.tag}"`
                 : "Explore Questions"}
           </h1>
           <p className="home-subtitle">Discover and solve interesting problems from your peers</p>
         </div>
 
         <div className="home-filters">
-          <Select value={category} onValueChange={setCategory}>
+          <Select value={category} onValueChange={handleCategoryChange}>
             <SelectTrigger className="home-category-select">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
@@ -148,7 +133,7 @@ export default function HomePage() {
             </SelectContent>
           </Select>
 
-          <Tabs defaultValue="latest" className="home-tabs" value={filter} onValueChange={setFilter}>
+          <Tabs defaultValue="latest" className="home-tabs" value={filter} onValueChange={handleFilterChange}>
             <TabsList className="home-tabs-list">
               <TabsTrigger 
                 value="latest" 
@@ -173,10 +158,15 @@ export default function HomePage() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
+          
+          <Button onClick={() => navigate("/ask")} className="ask-question-submit">
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Ask Question
+          </Button>
         </div>
       </div>
 
-      {loading ? (
+      {loading && questions.length === 0 ? (
         <div className="space-y-4" data-scroll data-scroll-speed="0.1">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="p-6 rounded-lg border border-gray-800 bg-gray-900/50">
@@ -205,8 +195,13 @@ export default function HomePage() {
 
           {hasMore && (
             <div className="home-load-more">
-              <Button onClick={handleLoadMore} variant="outline" className="home-load-more-button">
-                Load More
+              <Button 
+                onClick={handleLoadMore} 
+                variant="outline" 
+                className="home-load-more-button"
+                disabled={loading}
+              >
+                {loading ? "Loading..." : "Load More"}
               </Button>
             </div>
           )}
@@ -215,7 +210,7 @@ export default function HomePage() {
         <div className="home-empty-state" data-scroll data-scroll-speed="0.1">
           <h3 className="home-empty-title">No questions found</h3>
           <p className="home-empty-message">
-            {searchQuery || tag ? "Try a different search term or tag" : "Be the first to ask a question!"}
+            {searchParams.search || searchParams.tag ? "Try a different search term or tag" : "Be the first to ask a question!"}
           </p>
           <Button onClick={() => navigate("/ask")} className="ask-question-submit">
             Ask a Question
