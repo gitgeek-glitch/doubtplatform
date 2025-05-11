@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Check, X } from 'lucide-react'
+import { Check, X, ArrowLeft } from 'lucide-react'
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -18,6 +18,7 @@ export default function AuthPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("login")
+  const [passwordFocused, setPasswordFocused] = useState(false)
   
   // Login form state
   const [loginData, setLoginData] = useState({
@@ -141,7 +142,14 @@ export default function AuthPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateLoginForm()) return
+    if (!validateLoginForm()) {
+      toast({
+        title: "Login failed",
+        description: "Please check your inputs and try again.",
+        variant: "destructive"
+      })
+      return
+    }
     
     try {
       const resultAction = await dispatch(loginUser(loginData))
@@ -152,9 +160,20 @@ export default function AuthPage() {
           description: "Welcome back!",
         })
         navigate("/")
+      } else if (loginUser.rejected.match(resultAction)) {
+        toast({
+          title: "Login failed",
+          description: resultAction.payload as string || "Invalid credentials",
+          variant: "destructive"
+        })
       }
     } catch (error) {
       console.error("Login failed:", error)
+      toast({
+        title: "Login failed",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      })
     }
   }
   
@@ -162,7 +181,14 @@ export default function AuthPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateRegisterForm()) return
+    if (!validateRegisterForm()) {
+      toast({
+        title: "Registration failed",
+        description: "Please check your inputs and try again.",
+        variant: "destructive"
+      })
+      return
+    }
     
     try {
       const resultAction = await dispatch(registerUser({
@@ -177,15 +203,40 @@ export default function AuthPage() {
           description: "Your account has been created",
         })
         navigate("/")
+      } else if (registerUser.rejected.match(resultAction)) {
+        toast({
+          title: "Registration failed",
+          description: resultAction.payload as string || "Could not create account",
+          variant: "destructive"
+        })
       }
     } catch (error) {
       console.error("Registration failed:", error)
+      toast({
+        title: "Registration failed",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      })
     }
+  }
+
+  // Switch tab handler
+  const handleSwitchTab = (tab: string) => {
+    setActiveTab(tab)
   }
   
   return (
     <div className="auth-container">
       <div className="auth-card">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => navigate("/")}
+          className="auth-back-link auth-back-button"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+        </Button>
+        
         <div className="auth-header">
           <h1 className="auth-title">Welcome to DoubtSolve</h1>
           <p className="auth-subtitle">Your college doubt-solving platform</p>
@@ -257,6 +308,19 @@ export default function AuthPage() {
               <Button type="submit" className="auth-submit" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
+
+              <div className="auth-footer">
+                <p>
+                  Don't have an account?{" "}
+                  <Button 
+                    variant="link" 
+                    className="auth-link p-0" 
+                    onClick={() => handleSwitchTab("register")}
+                  >
+                    Register now
+                  </Button>
+                </p>
+              </div>
             </form>
           </TabsContent>
 
@@ -307,6 +371,8 @@ export default function AuthPage() {
                   placeholder="••••••••"
                   value={registerData.password}
                   onChange={handleRegisterChange}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
                   className={cn("auth-input", validationErrors.password && "auth-input-error")}
                   required
                   autoComplete="new-password"
@@ -316,51 +382,53 @@ export default function AuthPage() {
                   <p className="auth-error-message">{validationErrors.password}</p>
                 )}
                 
-                <div className="auth-password-criteria">
-                  <p className="auth-password-criteria-title">Password must contain:</p>
-                  <ul className="auth-password-criteria-list">
-                    <li className={`auth-password-criteria-item ${passwordCriteria.length ? "auth-criteria-met" : "auth-criteria-unmet"}`}>
-                      {passwordCriteria.length ? (
-                        <Check className="auth-criteria-icon" />
-                      ) : (
-                        <X className="auth-criteria-icon" />
-                      )}
-                      At least 8 characters
-                    </li>
-                    <li className={`auth-password-criteria-item ${passwordCriteria.uppercase ? "auth-criteria-met" : "auth-criteria-unmet"}`}>
-                      {passwordCriteria.uppercase ? (
-                        <Check className="auth-criteria-icon" />
-                      ) : (
-                        <X className="auth-criteria-icon" />
-                      )}
-                      At least one uppercase letter
-                    </li>
-                    <li className={`auth-password-criteria-item ${passwordCriteria.lowercase ? "auth-criteria-met" : "auth-criteria-unmet"}`}>
-                      {passwordCriteria.lowercase ? (
-                        <Check className="auth-criteria-icon" />
-                      ) : (
-                        <X className="auth-criteria-icon" />
-                      )}
-                      At least one lowercase letter
-                    </li>
-                    <li className={`auth-password-criteria-item ${passwordCriteria.number ? "auth-criteria-met" : "auth-criteria-unmet"}`}>
-                      {passwordCriteria.number ? (
-                        <Check className="auth-criteria-icon" />
-                      ) : (
-                        <X className="auth-criteria-icon" />
-                      )}
-                      At least one number
-                    </li>
-                    <li className={`auth-password-criteria-item ${passwordCriteria.special ? "auth-criteria-met" : "auth-criteria-unmet"}`}>
-                      {passwordCriteria.special ? (
-                        <Check className="auth-criteria-icon" />
-                      ) : (
-                        <X className="auth-criteria-icon" />
-                      )}
-                      At least one special character (recommended)
-                    </li>
-                  </ul>
-                </div>
+                {(passwordFocused || registerData.password) && (
+                  <div className="auth-password-criteria">
+                    <p className="auth-password-criteria-title">Password must contain:</p>
+                    <ul className="auth-password-criteria-list">
+                      <li className={`auth-password-criteria-item ${passwordCriteria.length ? "auth-criteria-met" : "auth-criteria-unmet"}`}>
+                        {passwordCriteria.length ? (
+                          <Check className="auth-criteria-icon" />
+                        ) : (
+                          <X className="auth-criteria-icon" />
+                        )}
+                        At least 8 characters
+                      </li>
+                      <li className={`auth-password-criteria-item ${passwordCriteria.uppercase ? "auth-criteria-met" : "auth-criteria-unmet"}`}>
+                        {passwordCriteria.uppercase ? (
+                          <Check className="auth-criteria-icon" />
+                        ) : (
+                          <X className="auth-criteria-icon" />
+                        )}
+                        At least one uppercase letter
+                      </li>
+                      <li className={`auth-password-criteria-item ${passwordCriteria.lowercase ? "auth-criteria-met" : "auth-criteria-unmet"}`}>
+                        {passwordCriteria.lowercase ? (
+                          <Check className="auth-criteria-icon" />
+                        ) : (
+                          <X className="auth-criteria-icon" />
+                        )}
+                        At least one lowercase letter
+                      </li>
+                      <li className={`auth-password-criteria-item ${passwordCriteria.number ? "auth-criteria-met" : "auth-criteria-unmet"}`}>
+                        {passwordCriteria.number ? (
+                          <Check className="auth-criteria-icon" />
+                        ) : (
+                          <X className="auth-criteria-icon" />
+                        )}
+                        At least one number
+                      </li>
+                      <li className={`auth-password-criteria-item ${passwordCriteria.special ? "auth-criteria-met" : "auth-criteria-unmet"}`}>
+                        {passwordCriteria.special ? (
+                          <Check className="auth-criteria-icon" />
+                        ) : (
+                          <X className="auth-criteria-icon" />
+                        )}
+                        At least one special character (recommended)
+                      </li>
+                    </ul>
+                  </div>
+                )}
               </div>
 
               <div className="auth-field">
@@ -387,6 +455,19 @@ export default function AuthPage() {
               <Button type="submit" className="auth-submit" disabled={isLoading}>
                 {isLoading ? "Creating account..." : "Create Account"}
               </Button>
+
+              <div className="auth-footer">
+                <p>
+                  Already have an account?{" "}
+                  <Button 
+                    variant="link" 
+                    className="auth-link p-0" 
+                    onClick={() => handleSwitchTab("login")}
+                  >
+                    Sign in
+                  </Button>
+                </p>
+              </div>
             </form>
           </TabsContent>
         </Tabs>

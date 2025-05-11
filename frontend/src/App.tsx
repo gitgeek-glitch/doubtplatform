@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "./redux/hooks"
 import { checkAuthStatus } from "./redux/slices/authSlice"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -47,6 +47,23 @@ const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>
 }
 
+// Layout component that conditionally renders the navbar
+const AppLayout = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  const isAuthPage = location.pathname === "/auth";
+  
+  return (
+    <div className="min-h-screen bg-background text-foreground" data-scroll-container>
+      {!isAuthPage && <Navbar />}
+      <main className="container mx-auto px-4 py-8">
+        {children}
+      </main>
+      <Toaster />
+      <ThemeToggle />
+    </div>
+  );
+};
+
 function App() {
   const dispatch = useAppDispatch()
   const { isLoading } = useAppSelector(state => state.auth)
@@ -64,70 +81,65 @@ function App() {
     <ThemeProvider defaultTheme="dark" storageKey="doubt-platform-theme">
       <Router>
         <LocomotiveScrollProvider>
-          <div className="min-h-screen bg-background text-foreground" data-scroll-container>
-            <Navbar />
-            <main className="container mx-auto px-4 py-8">
-              <Routes>
-                {/* Public routes */}
-                <Route
-                  path="/"
-                  element={
-                    <PublicOnlyRoute>
-                      <LandingPage />
-                    </PublicOnlyRoute>
-                  }
-                />
-                <Route
-                  path="/auth"
-                  element={
-                    <PublicOnlyRoute>
-                      <AuthPage />
-                    </PublicOnlyRoute>
-                  }
-                />
+          <AppLayout>
+            <Routes>
+              {/* Public routes */}
+              <Route
+                path="/"
+                element={
+                  <PublicOnlyRoute>
+                    <LandingPage />
+                  </PublicOnlyRoute>
+                }
+              />
+              <Route
+                path="/auth"
+                element={
+                  <PublicOnlyRoute>
+                    <AuthPage />
+                  </PublicOnlyRoute>
+                }
+              />
 
-                {/* Protected routes */}
-                <Route
-                  path="/home"
-                  element={
-                    <ProtectedRoute>
-                      <HomePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/question/:id"
-                  element={
-                    <ProtectedRoute>
-                      <QuestionDetailPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/ask"
-                  element={
-                    <ProtectedRoute>
-                      <AskQuestionPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile/:id"
-                  element={
-                    <ProtectedRoute>
-                      <ProfilePage />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Protected routes */}
+              <Route
+                path="/home"
+                element={
+                  <ProtectedRoute>
+                    <HomePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/question/:id"
+                element={
+                  <ProtectedRoute>
+                    <QuestionDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/ask"
+                element={
+                  <ProtectedRoute>
+                    <AskQuestionPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile/:id"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* 404 route */}
-                <Route path="/404" element={<NotFound />} />
-                <Route path="*" element={<Navigate to="/404" replace />} />
-              </Routes>
-            </main>
-            <Toaster />
-            <ThemeToggle />
-          </div>
+              {/* 404 route */}
+              <Route path="/404" element={<NotFound />} />
+              <Route path="*" element={<Navigate to="/404" replace />} />
+            </Routes>
+          </AppLayout>
         </LocomotiveScrollProvider>
       </Router>
     </ThemeProvider>

@@ -692,17 +692,39 @@
     @apply mt-8 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white;
   }
 
-  /* Auth Page Styles */
-  .auth-container {
-    @apply flex items-center justify-center min-h-[calc(100vh-16rem)];
-  }
+/* Auth Page Styles */
+  /* Modify the auth-container class to allow scrolling */
+.auth-container {
+  @apply flex flex-col items-center w-full;
+  padding: 2rem 1rem;
+  min-height: 100vh; /* Change from auto to 100vh */
+  height: auto;
+  overflow-y: auto; /* Add this to enable scrolling */
+}
 
-  .auth-card {
-    @apply w-full max-w-md space-y-8 p-8 rounded-xl border border-gray-800 bg-gray-900/50 backdrop-blur-sm;
-  }
+/* Modify the auth-card class to ensure it doesn't have fixed height constraints */
+.auth-card {
+  @apply w-full max-w-md border border-gray-800 bg-gray-900/50 backdrop-blur-sm relative rounded-xl;
+  padding: 4rem 2rem 2rem 2rem;
+  margin-bottom: 2rem;
+  overflow: visible; /* Ensure content can overflow properly */
+}
+
+/* Increase button size */
+.auth-submit {
+  @apply w-full h-12 px-8 text-sm font-medium rounded-full bg-purple-600 hover:bg-purple-700 shadow-md hover:shadow-lg transition-all;
+}
 
   .auth-header {
-    @apply text-center;
+    @apply text-center mb-6;
+  }
+
+  .auth-back-button {
+    @apply absolute left-0 top-0 m-4;
+  }
+
+  .auth-back-link {
+    @apply text-muted-foreground hover:text-foreground transition-colors;
   }
 
   .auth-title {
@@ -733,12 +755,57 @@
     @apply bg-gray-800 border-gray-700;
   }
 
+  .auth-input-error {
+    @apply border-red-500;
+  }
+
+  .auth-error-message {
+    @apply text-xs text-red-500;
+  }
+
   .auth-hint {
     @apply text-xs text-muted-foreground;
   }
 
-  .auth-submit {
-    @apply w-full bg-purple-600 hover:bg-purple-700;
+  .auth-password-criteria {
+    @apply mt-3 bg-gray-800 p-3 rounded-md border border-gray-700;
+  }
+
+  .auth-password-criteria-title {
+    @apply text-xs mb-2 text-muted-foreground;
+  }
+
+  .auth-password-criteria-list {
+    @apply space-y-1;
+  }
+
+  .auth-password-criteria-item {
+    @apply flex items-center text-xs gap-2;
+  }
+
+  .auth-criteria-icon {
+    @apply w-3 h-3 flex-shrink-0;
+  }
+
+  .auth-criteria-met {
+    @apply text-green-500;
+  }
+
+  .auth-criteria-unmet {
+    @apply text-red-500;
+  }
+
+  .auth-footer {
+    @apply text-center text-sm text-muted-foreground mt-6;
+  }
+
+  .auth-link {
+    @apply text-purple-400 hover:text-purple-300;
+  }
+  
+  /* Ensure body scrolls properly */
+  body {
+    overflow-y: auto;
   }
 
   /* Profile Page Styles */
