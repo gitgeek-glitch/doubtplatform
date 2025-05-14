@@ -692,28 +692,28 @@
     @apply mt-8 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white;
   }
 
-/* Auth Page Styles */
+  /* Auth Page Styles */
   /* Modify the auth-container class to allow scrolling */
-.auth-container {
-  @apply flex flex-col items-center w-full;
-  padding: 2rem 1rem;
-  min-height: 100vh; /* Change from auto to 100vh */
-  height: auto;
-  overflow-y: auto; /* Add this to enable scrolling */
-}
+  .auth-container {
+    @apply flex flex-col items-center w-full;
+    padding: 2rem 1rem;
+    min-height: 100vh; /* Change from auto to 100vh */
+    height: auto;
+    overflow-y: auto; /* Add this to enable scrolling */
+  }
 
-/* Modify the auth-card class to ensure it doesn't have fixed height constraints */
-.auth-card {
-  @apply w-full max-w-md border border-gray-800 bg-gray-900/50 backdrop-blur-sm relative rounded-xl;
-  padding: 4rem 2rem 2rem 2rem;
-  margin-bottom: 2rem;
-  overflow: visible; /* Ensure content can overflow properly */
-}
+  /* Modify the auth-card class to ensure it doesn't have fixed height constraints */
+  .auth-card {
+    @apply w-full max-w-md border border-gray-800 bg-gray-900/50 backdrop-blur-sm relative rounded-xl;
+    padding: 4rem 2rem 2rem 2rem;
+    margin-bottom: 2rem;
+    overflow: visible; /* Ensure content can overflow properly */
+  }
 
-/* Increase button size */
-.auth-submit {
-  @apply w-full h-12 px-8 text-sm font-medium rounded-full bg-purple-600 hover:bg-purple-700 shadow-md hover:shadow-lg transition-all;
-}
+  /* Increase button size */
+  .auth-submit {
+    @apply w-full h-12 px-8 text-sm font-medium rounded-full bg-purple-600 hover:bg-purple-700 shadow-md hover:shadow-lg transition-all;
+  }
 
   .auth-header {
     @apply text-center mb-6;
@@ -802,7 +802,7 @@
   .auth-link {
     @apply text-purple-400 hover:text-purple-300;
   }
-  
+
   /* Ensure body scrolls properly */
   body {
     overflow-y: auto;
@@ -935,24 +935,24 @@
   }
 
   .home-container {
-  @apply w-full;
-}
+    @apply w-full;
+  }
 
-.home-content {
-  @apply grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6;
-}
+  .home-content {
+    @apply grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6;
+  }
 
-.home-main {
-  @apply lg:col-span-2;
-}
+  .home-main {
+    @apply lg:col-span-2;
+  }
 
-.home-sidebar {
-  @apply lg:col-span-1;
-}
+  .home-sidebar {
+    @apply lg:col-span-1;
+  }
 
-.home-sidebar-widgets {
-  @apply space-y-6;
-}
+  .home-sidebar-widgets {
+    @apply space-y-6;
+  }
 
   .home-subtitle {
     @apply text-muted-foreground mt-1;
@@ -1786,4 +1786,14 @@ html.has-scroll-dragging {
   .home-sidebar-widgets {
     @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6;
   }
+}
+
+/* Add these styles to the @layer components section */
+
+.question-detail-delete-button {
+  @apply text-red-400 hover:text-red-300 hover:bg-red-900/20 border-gray-800;
+}
+
+:root.light .question-detail-delete-button {
+  @apply border-gray-300;
 }

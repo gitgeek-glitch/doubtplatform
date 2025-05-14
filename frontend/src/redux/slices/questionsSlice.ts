@@ -275,6 +275,38 @@ export const submitQuestion = createAsyncThunk(
   },
 )
 
+// Add these new thunks after the submitQuestion thunk
+
+// Delete a question
+export const deleteQuestion = createAsyncThunk(
+  "questions/deleteQuestion",
+  async (questionId: string, { rejectWithValue, dispatch }) => {
+    try {
+      await api.delete(`/questions/${questionId}`)
+      
+      // Force refresh questions list to update UI
+      dispatch(clearCache())
+      
+      return questionId
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to delete question")
+    }
+  }
+)
+
+// Delete an answer
+export const deleteAnswer = createAsyncThunk(
+  "questions/deleteAnswer",
+  async (answerId: string, { rejectWithValue }) => {
+    try {
+      await api.delete(`/answers/${answerId}`)
+      return answerId
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to delete answer")
+    }
+  }
+)
+
 const questionsSlice = createSlice({
   name: "questions",
   initialState,
@@ -482,6 +514,44 @@ const questionsSlice = createSlice({
         }
       })
       .addCase(submitQuestion.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
+      })
+
+      // Delete question
+      .addCase(deleteQuestion.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(deleteQuestion.fulfilled, (state, action) => {
+        state.loading = false
+        // Remove the deleted question from the questions array
+        state.questions = state.questions.filter(question => question._id !== action.payload)
+        // If the current question is the deleted one, reset it
+        if (state.currentQuestion && state.currentQuestion._id === action.payload) {
+          state.currentQuestion = null
+        }
+      })
+      .addCase(deleteQuestion.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
+      })
+
+      // Delete answer
+      .addCase(deleteAnswer.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(deleteAnswer.fulfilled, (state, action) => {
+        state.loading = false
+        // Remove the deleted answer from the answers array
+        state.answers = state.answers.filter(answer => answer._id !== action.payload)
+        // If the current question exists, decrement its answer count
+        if (state.currentQuestion) {
+          state.currentQuestion.answerCount = Math.max(0, state.currentQuestion.answerCount - 1)
+        }
+      })
+      .addCase(deleteAnswer.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
       })

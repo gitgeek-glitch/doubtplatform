@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import { api, isRateLimited, getRateLimitInfo } from '@/lib/api'
+import { api } from '@/lib/api'
 
 interface User {
   _id: string
@@ -57,49 +57,29 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      // Check if endpoint is rate limited before making request
-      const endpoint = '/auth/login';
-      if (isRateLimited(endpoint)) {
-        const rateLimitInfo = getRateLimitInfo(endpoint);
-        const waitTimeMs = Math.max(rateLimitInfo.nextAllowedTime - Date.now(), 1000);
-        const waitTimeSec = Math.ceil(waitTimeMs / 1000);
-        
-        return rejectWithValue({
-          message: `Too many login attempts. Please try again in ${waitTimeSec} seconds.`,
-          rateLimited: true,
-          retryAfter: waitTimeMs
-        });
-      }
-      
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email, password })
       
       // Save token to localStorage
-      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('token', response.data.token)
       
       // Set default auth header
-      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`
       
-      return response.data.user;
+      return response.data.user
     } catch (error: any) {
-      // Check if rate limited
+      // Handle server-returned rate limiting if it occurs
       if (error.response?.status === 429) {
-        // Get retry-after header or use default
-        const retryAfter = error.response.headers["retry-after"];
-        const waitTimeMs = (retryAfter ? parseInt(retryAfter, 10) * 1000 : 30000);
-        const waitTimeSec = Math.ceil(waitTimeMs / 1000);
-        
         return rejectWithValue({
-          message: error.response?.data || `Too many login attempts. Please try again in ${waitTimeSec} seconds.`,
+          message: error.response?.data?.message || 'Too many login attempts. Please try again later.',
           rateLimited: true,
-          retryAfter: waitTimeMs,
-          status: 429
-        });
+          retryAfter: 30000 // Default to 30 seconds if not provided
+        })
       }
       
       return rejectWithValue({
         message: error.response?.data?.message || 'Invalid email or password',
         rateLimited: false
-      });
+      })
     }
   }
 )
@@ -111,20 +91,6 @@ export const registerUser = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      // Check if endpoint is rate limited before making request
-      const endpoint = '/auth/register'
-      if (isRateLimited(endpoint)) {
-        const rateLimitInfo = getRateLimitInfo(endpoint)
-        const waitTimeMs = rateLimitInfo.retryAfter
-        const waitTimeSec = Math.ceil(waitTimeMs / 1000)
-        
-        return rejectWithValue({
-          message: `Too many registration attempts. Please try again in ${waitTimeSec} seconds.`,
-          rateLimited: true,
-          retryAfter: waitTimeMs
-        })
-      }
-      
       const response = await api.post('/auth/register', { name, email, password })
       
       // Save token to localStorage
@@ -135,16 +101,12 @@ export const registerUser = createAsyncThunk(
       
       return response.data.user
     } catch (error: any) {
-      // Check if rate limited
+      // Handle server-returned rate limiting if it occurs
       if (error.response?.status === 429) {
-        const rateLimitInfo = getRateLimitInfo('/auth/register')
-        const waitTimeMs = rateLimitInfo.retryAfter
-        const waitTimeSec = Math.ceil(waitTimeMs / 1000)
-        
         return rejectWithValue({
-          message: `Too many registration attempts. Please try again in ${waitTimeSec} seconds.`,
+          message: error.response?.data?.message || 'Too many registration attempts. Please try again later.',
           rateLimited: true,
-          retryAfter: waitTimeMs
+          retryAfter: 30000 // Default to 30 seconds if not provided
         })
       }
       

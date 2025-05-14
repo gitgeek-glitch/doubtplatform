@@ -1,7 +1,9 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect, useState, useRef } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams, Link, useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import {
   fetchQuestionDetails,
@@ -11,6 +13,8 @@ import {
   acceptAnswer,
   submitAnswer,
   resetQuestionState,
+  deleteQuestion,
+  deleteAnswer,
 } from "@/redux/slices/questionsSlice"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -18,7 +22,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowUp, ArrowDown, MessageSquare, Check, Share2, RefreshCw } from 'lucide-react'
+import { ArrowUp, ArrowDown, MessageSquare, Check, Share2, RefreshCw, Trash2, AlertTriangle } from 'lucide-react'
 import { formatDistanceToNow } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -28,7 +32,7 @@ export default function QuestionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const dispatch = useAppDispatch()
   const { toast } = useToast()
-  const { user, isAuthenticated } = useAppSelector(state => state.auth)
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth)
   const {
     currentQuestion: question,
     answers,
@@ -36,12 +40,15 @@ export default function QuestionDetailPage() {
     loading,
     questionVote,
     answerVotes,
-  } = useAppSelector(state => state.questions)
+  } = useAppSelector((state) => state.questions)
   const [answerContent, setAnswerContent] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isDeletingQuestion, setIsDeletingQuestion] = useState(false)
+  const [deletingAnswerId, setDeletingAnswerId] = useState<string | null>(null)
   const lastFetchTimeRef = useRef<number>(0)
+  const navigate = useNavigate()
 
   // Fetch question details on mount with cache busting
   const fetchQuestionWithDetails = (forceRefresh = false) => {
@@ -51,11 +58,11 @@ export default function QuestionDetailPage() {
     // Only fetch if forced or if it's been more than 10 seconds since last fetch
     if (forceRefresh || now - lastFetchTimeRef.current > 10000) {
       lastFetchTimeRef.current = now
-      
+
       if (forceRefresh) {
         setIsRefreshing(true)
       }
-      
+
       dispatch(fetchQuestionDetails(id))
         .unwrap()
         .then(() => {
@@ -87,7 +94,7 @@ export default function QuestionDetailPage() {
   // Initial fetch on mount
   useEffect(() => {
     fetchQuestionWithDetails(true)
-    
+
     // Cleanup on unmount
     return () => {
       dispatch(resetQuestionState())
@@ -178,7 +185,7 @@ export default function QuestionDetailPage() {
       const currentVote = answerVotes[answerId] || 0
       // If user already voted the same way, remove the vote
       const finalValue = currentVote === value ? 0 : value
-      
+
       await dispatch(voteAnswer({ answerId, value: finalValue })).unwrap()
     } catch (error) {
       toast({
@@ -202,12 +209,12 @@ export default function QuestionDetailPage() {
 
     try {
       await dispatch(acceptAnswer(answerId)).unwrap()
-      
+
       toast({
         title: "Answer accepted",
         description: "You've marked this answer as accepted",
       })
-      
+
       // Refresh question details to ensure UI is up to date
       fetchQuestionWithDetails(true)
     } catch (error) {
@@ -252,7 +259,7 @@ export default function QuestionDetailPage() {
         title: "Answer submitted",
         description: "Your answer has been posted successfully",
       })
-      
+
       // Refresh question details to show the new answer
       fetchQuestionWithDetails(true)
     } catch (error) {
@@ -273,6 +280,111 @@ export default function QuestionDetailPage() {
       title: "Link copied",
       description: "Question link copied to clipboard",
     })
+  }
+
+  // Handle delete question
+  const handleDeleteQuestion = async () => {
+    if (!isAuthenticated || !question || user?._id !== question.author._id) {
+      toast({
+        title: "Not authorized",
+        description: "Only the question author can delete this question",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Confirm deletion
+      if (!window.confirm("Are you sure you want to delete this question? This action cannot be undone.")) {
+        return
+      }
+
+      setIsDeletingQuestion(true)
+      
+      const resultAction = await dispatch(deleteQuestion(id!))
+      
+      if (deleteQuestion.fulfilled.match(resultAction)) {
+        toast({
+          title: "Question deleted",
+          description: "Your question has been deleted successfully",
+        })
+        
+        // Navigate back to home page
+        navigate("/")
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete the question",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete the question",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeletingQuestion(false)
+    }
+  }
+
+  // Handle delete answer
+  const handleDeleteAnswer = async (answerId: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to delete answers",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check if user is either the answer author or the question author
+    const answer = answers.find((a) => a._id === answerId)
+    if (!answer || (user?._id !== answer.author._id && user?._id !== question?.author._id)) {
+      toast({
+        title: "Not authorized",
+        description: "You don't have permission to delete this answer",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Confirm deletion
+      if (!window.confirm("Are you sure you want to delete this answer? This action cannot be undone.")) {
+        return
+      }
+
+      setDeletingAnswerId(answerId)
+      
+      const resultAction = await dispatch(deleteAnswer(answerId))
+      
+      if (deleteAnswer.fulfilled.match(resultAction)) {
+        toast({
+          title: "Answer deleted",
+          description: "The answer has been deleted successfully",
+        })
+        
+        // Refresh question details to update the UI
+        fetchQuestionWithDetails(true)
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete the answer",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete the answer",
+        variant: "destructive",
+      })
+    } finally {
+      setDeletingAnswerId(null)
+    }
   }
 
   if (loading && !question) {
@@ -310,6 +422,7 @@ export default function QuestionDetailPage() {
   if (!question) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center">
+        <AlertTriangle className="h-16 w-16 text-amber-500 mb-4" />
         <h2 className="text-2xl font-bold mb-2">Question not found</h2>
         <p className="text-muted-foreground mb-4">The question you're looking for doesn't exist or has been removed.</p>
         <Button asChild>
@@ -334,25 +447,32 @@ export default function QuestionDetailPage() {
           <div className="question-detail-header">
             <h1 className="question-detail-title">{question.title}</h1>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-9 w-9" 
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
                 title="Refresh question and answers"
               >
                 <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="question-detail-share" 
-                onClick={handleShareQuestion}
-              >
+              <Button variant="outline" size="sm" className="question-detail-share" onClick={handleShareQuestion}>
                 <Share2 className="h-4 w-4 mr-2" />
                 Share
               </Button>
+              {isAuthenticated && user?._id === question.author._id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-400 hover:text-red-300 hover:bg-red-900/20 border-gray-800 flex items-center gap-1"
+                  onClick={handleDeleteQuestion}
+                  disabled={isDeletingQuestion}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {isDeletingQuestion ? "Deleting..." : "Delete"}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -422,12 +542,7 @@ export default function QuestionDetailPage() {
               {answers.length} {answers.length === 1 ? "Answer" : "Answers"}
             </h2>
             {answers.length > 0 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-              >
+              <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
                 <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
                 {isRefreshing ? "Refreshing..." : "Refresh"}
               </Button>
@@ -446,7 +561,10 @@ export default function QuestionDetailPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className={cn("question-detail-vote-button", answerVotes[answer._id] === 1 && "question-detail-vote-up")}
+                        className={cn(
+                          "question-detail-vote-button",
+                          answerVotes[answer._id] === 1 && "question-detail-vote-up",
+                        )}
                         onClick={() => handleAnswerVote(answer._id, 1)}
                       >
                         <ArrowUp className="h-6 w-6" />
@@ -455,7 +573,10 @@ export default function QuestionDetailPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className={cn("question-detail-vote-button", answerVotes[answer._id] === -1 && "question-detail-vote-down")}
+                        className={cn(
+                          "question-detail-vote-button",
+                          answerVotes[answer._id] === -1 && "question-detail-vote-down",
+                        )}
                         onClick={() => handleAnswerVote(answer._id, -1)}
                       >
                         <ArrowDown className="h-6 w-6" />
@@ -501,6 +622,21 @@ export default function QuestionDetailPage() {
                           </Avatar>
                         </div>
                       </div>
+                      
+                      {isAuthenticated && (user?._id === answer.author._id || user?._id === question.author._id) && (
+                        <div className="flex justify-end mt-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-400 hover:text-red-300 hover:bg-red-900/20 flex items-center gap-1"
+                            onClick={() => handleDeleteAnswer(answer._id)}
+                            disabled={deletingAnswerId === answer._id}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            {deletingAnswerId === answer._id ? "Deleting..." : "Delete"}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

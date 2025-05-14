@@ -13,18 +13,18 @@ declare module "axios" {
     skipCache?: boolean
     __cached?: boolean
     __isRetryRequest?: boolean
-    cachedData?: any // Add cachedData property
+    cachedData?: any
   }
 
   export interface InternalAxiosRequestConfig extends AxiosRequestConfig {
-    cachedData?: any // Add cachedData property
+    cachedData?: any
   }
 }
 
 // Import or define the Question type
 export interface Question {
   id: string
-  questions: Question[] // Ensure Question type is defined or imported
+  questions: Question[]
   content: string
   // Add other properties as needed
 }
@@ -49,16 +49,6 @@ export const api = axios.create({
   timeout: 10000,
 })
 
-// Rate limiting state
-interface RateLimitState {
-  retryCount: number
-  retryAfter: number
-  lastRetryTime: number
-  nextAllowedTime: number
-}
-
-const rateLimitState: Record<string, RateLimitState> = {}
-
 // Cache for responses
 interface CacheEntry {
   data: any
@@ -66,7 +56,7 @@ interface CacheEntry {
 }
 
 const responseCache: Record<string, CacheEntry> = {}
-const CACHE_DURATION = 5 * 1000 // Reduced to 5 seconds for more frequent updates
+const CACHE_DURATION = 5 * 1000 // 5 seconds for more frequent updates
 
 // Function to clear cache entries
 export const clearCache = (pattern?: string) => {
@@ -94,56 +84,6 @@ export const clearQuestionsCache = () => {
   clearCache('/answers')
   // Dispatch Redux action to clear cache
   store.dispatch(clearCacheAction())
-}
-
-// Update rate limiting constants
-const MIN_RETRY_DELAY = 1000; // 1 second
-const MAX_RETRY_DELAY = 30000; // 30 seconds
-const MAX_RETRIES = 3;
-
-// Helper function to handle rate limiting
-const handleRateLimit = async (endpoint: string): Promise<number> => {
-  const state = rateLimitState[endpoint];
-  if (!state) return 0;
-
-  // Calculate exponential backoff
-  const retryDelay = Math.min(
-    MIN_RETRY_DELAY * Math.pow(2, state.retryCount),
-    MAX_RETRY_DELAY
-  );
-
-  console.log(`Rate limited for ${endpoint}. Waiting ${retryDelay}ms before retry.`);
-  
-  // Update the nextAllowedTime
-  state.nextAllowedTime = Date.now() + retryDelay;
-  
-  await new Promise(resolve => setTimeout(resolve, retryDelay));
-  
-  state.retryCount = Math.min(state.retryCount + 1, MAX_RETRIES);
-  state.lastRetryTime = Date.now();
-  
-  return retryDelay;
-}
-
-// Reset rate limit state on successful request
-const resetRateLimitState = (endpoint: string) => {
-  if (rateLimitState[endpoint]) {
-    rateLimitState[endpoint] = {
-      retryCount: 0,
-      retryAfter: 1000,
-      lastRetryTime: Date.now(),
-      nextAllowedTime: 0,
-    }
-  }
-}
-
-// Check if an endpoint is currently rate limited
-export const isRateLimited = (endpoint: string): boolean => {
-  const state = rateLimitState[endpoint]
-  if (!state) return false
-
-  const now = Date.now()
-  return state.nextAllowedTime > now
 }
 
 // Get cached response if available
@@ -193,13 +133,6 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
 
-    // Check if this endpoint is rate limited
-    const endpoint = config.url || "unknown"
-    if (isRateLimited(endpoint)) {
-      // Return a rejected promise to prevent the request
-      return Promise.reject(new Error(`Rate limited for ${endpoint}. Please try again later.`))
-    }
-
     // Check cache for GET requests
     if (config.method?.toLowerCase() === "get" && !config.skipCache) {
       const cachedData = getCachedResponse(config)
@@ -230,11 +163,6 @@ api.interceptors.request.use(
 // Add a response interceptor to handle common errors
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Reset rate limit state on successful request
-    if (response.config.url) {
-      resetRateLimitState(response.config.url)
-    }
-
     // Clear cache for write operations on questions/answers
     if (
       response.config.method?.toLowerCase() !== 'get' &&
@@ -258,7 +186,7 @@ api.interceptors.response.use(
       console.error("Response data:", axiosError.response.data)
       console.error("Response status:", axiosError.response.status)
 
-      // Handle 401 first, before rate limiting
+      // Handle 401 Unauthorized errors
       if (axiosError.response.status === 401) {
         // Only clear token and redirect if not on auth page
         if (window.location.pathname !== "/auth") {
@@ -268,47 +196,9 @@ api.interceptors.response.use(
           return Promise.reject(new Error("Session expired. Please login again."))
         }
       }
-
-      // Handle rate limiting (429 Too Many Requests)
-      if (axiosError.response.status === 429) {
-        const endpoint = axiosError.config.url || "unknown"
-        if (!rateLimitState[endpoint]) {
-          rateLimitState[endpoint] = {
-            retryCount: 0,
-            retryAfter: 0,
-            lastRetryTime: 0,
-            nextAllowedTime: Date.now(),
-          }
-        }
-
-        // Get retry-after header if available
-        const retryAfter = axiosError.response.headers["retry-after"]
-        if (retryAfter) {
-          rateLimitState[endpoint].retryAfter = parseInt(retryAfter, 10) * 1000
-        }
-
-        // Only retry if we haven't exceeded max retries
-        if (rateLimitState[endpoint].retryCount < MAX_RETRIES) {
-          await handleRateLimit(endpoint)
-          return api(axiosError.config)
-        }
-      }
     } else if (axiosError.request) {
       // The request was made but no response was received
       console.error("No response received:", axiosError.request)
-    }
-
-    if (axiosError.response?.status === 401) {
-      // Clear token if unauthorized
-      localStorage.removeItem("token")
-
-      // Remove auth header
-      delete api.defaults.headers.common["Authorization"]
-
-      // Redirect to login page if not already there
-      if (window.location.pathname !== "/auth") {
-        window.location.href = "/auth"
-      }
     }
 
     return Promise.reject(error)
@@ -319,18 +209,6 @@ api.interceptors.response.use(
 export const hasValidToken = () => {
   const token = localStorage.getItem("token")
   return !!token
-}
-
-// Export utility function to check if request is being rate limited
-export const getRateLimitInfo = (endpoint: string) => {
-  return (
-    rateLimitState[endpoint] || {
-      retryCount: 0,
-      retryAfter: 0,
-      lastRetryTime: 0,
-      nextAllowedTime: 0,
-    }
-  )
 }
 
 export default api

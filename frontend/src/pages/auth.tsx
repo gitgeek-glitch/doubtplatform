@@ -167,66 +167,64 @@ export default function AuthPage() {
   }
   
   // Handle login form submission
-  // Fix the handleLogin function to properly handle rate limiting
-const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault()
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
 
-  if (rateLimited) {
-    toast({
-      title: "Rate limited",
-      description: `Too many attempts. Please try again in ${rateLimitCountdown} seconds.`,
-      variant: "destructive"
-    });
-    return;
-  }
-  
-  if (!validateLoginForm()) {
-    toast({
-      title: "Login failed",
-      description: "Please check your inputs and try again.",
-      variant: "destructive"
-    })
-    return;
-  }
-  
-  try {
-    const resultAction = await dispatch(loginUser(loginData));
-    
-    if (loginUser.fulfilled.match(resultAction)) {
+    if (rateLimited) {
       toast({
-        title: "Login successful",
-        description: "Welcome back!",
+        title: "Rate limited",
+        description: `Too many attempts. Please try again in ${rateLimitCountdown} seconds.`,
+        variant: "destructive"
       });
-      navigate("/");
-    } else if (loginUser.rejected.match(resultAction)) {
-      const payload = resultAction.payload as { rateLimited?: boolean; retryAfter?: number; message?: string };
-      
-      // Check if rate limited from payload instead of status
-      if (payload?.rateLimited) {
-        setRateLimited(true);
-        setRateLimitRetryAfter(Math.ceil((payload.retryAfter || 30000) / 1000));
-        toast({
-          title: "Too many attempts",
-          description: payload.message || "Please wait before trying again",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Login failed",
-          description: payload?.message || "An error occurred",
-          variant: "destructive"
-        });
-      }
+      return;
     }
-  } catch (error) {
-    console.error("Login failed:", error);
-    toast({
-      title: "Login failed",
-      description: "An unexpected error occurred",
-      variant: "destructive"
-    });
+    
+    if (!validateLoginForm()) {
+      toast({
+        title: "Login failed",
+        description: "Please check your inputs and try again.",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    try {
+      const resultAction = await dispatch(loginUser(loginData))
+      
+      if (loginUser.fulfilled.match(resultAction)) {
+        toast({
+          title: "Login successful",
+          description: "Welcome back!",
+        })
+        navigate("/")
+      } else if (loginUser.rejected.match(resultAction)) {
+        const error = resultAction.payload as { status?: number; message?: string };
+        
+        if (error?.status === 429) {
+          setRateLimited(true);
+          setRateLimitRetryAfter(30); // or get from response headers if provided
+          toast({
+            title: "Too many attempts",
+            description: "Please wait before trying again",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Login failed",
+            description: error?.message || "An error occurred",
+            variant: "destructive"
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Login failed:", error)
+      toast({
+        title: "Login failed",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      })
+    }
   }
-}
   
   // Handle register form submission
   const handleRegister = async (e: React.FormEvent) => {

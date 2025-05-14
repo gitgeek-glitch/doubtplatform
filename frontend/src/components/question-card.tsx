@@ -2,12 +2,13 @@
 
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { useAppSelector } from "@/redux/hooks"
+import { useAppSelector, useAppDispatch } from "@/redux/hooks"
+import { deleteQuestion } from "@/redux/slices/questionsSlice"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { ArrowUp, ArrowDown, MessageSquare, Eye } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Trash2 } from 'lucide-react'
 import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
@@ -33,13 +34,15 @@ interface QuestionCardProps {
 }
 
 export default function QuestionCard({ question }: QuestionCardProps) {
-  const { isAuthenticated } = useAppSelector(state => state.auth)
+  const dispatch = useAppDispatch()
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth)
   const { toast } = useToast()
   const [votes, setVotes] = useState({
     upvotes: question.upvotes,
     downvotes: question.downvotes,
     userVote: 0, // 0: no vote, 1: upvote, -1: downvote
   })
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleVote = async (voteType: "up" | "down") => {
     if (!isAuthenticated) {
@@ -85,6 +88,52 @@ export default function QuestionCard({ question }: QuestionCardProps) {
     }
   }
 
+  const handleDeleteQuestion = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to delete questions",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Confirm deletion
+      if (!window.confirm("Are you sure you want to delete this question? This action cannot be undone.")) {
+        return
+      }
+
+      setIsDeleting(true)
+      
+      const resultAction = await dispatch(deleteQuestion(question._id))
+      
+      if (deleteQuestion.fulfilled.match(resultAction)) {
+        toast({
+          title: "Question deleted",
+          description: "Your question has been deleted successfully",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete the question",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete the question",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   // Truncate content for preview
   const truncatedContent = question.content.length > 150 ? question.content.substring(0, 150) + "..." : question.content
 
@@ -95,28 +144,28 @@ export default function QuestionCard({ question }: QuestionCardProps) {
           <Link to={`/question/${question._id}`} className="question-card-title">
             {question.title}
           </Link>
-          <div className="flex flex-col items-center gap-1 min-w-[60px]">
+          <div className="flex items-center gap-1 min-w-[100px]">
             <Button
               variant="ghost"
               size="icon"
-              className={cn("question-card-vote-button", votes.userVote === 1 && "question-card-vote-button-up")}
+              className={cn("question-card-vote-button", votes.userVote === 1 && "text-green-500")}
               onClick={() => handleVote("up")}
             >
-              <ArrowUp className="h-5 w-5" />
+              <ThumbsUp className="h-5 w-5" />
             </Button>
             <span className="font-medium text-lg">{votes.upvotes - votes.downvotes}</span>
             <Button
               variant="ghost"
               size="icon"
-              className={cn("question-card-vote-button", votes.userVote === -1 && "question-card-vote-button-down")}
+              className={cn("question-card-vote-button", votes.userVote === -1 && "text-red-500")}
               onClick={() => handleVote("down")}
             >
-              <ArrowDown className="h-5 w-5" />
+              <ThumbsDown className="h-5 w-5" />
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-4">
+      <CardContent className="p-4 pt-0">
         <p className="text-muted-foreground mb-3">{truncatedContent}</p>
         <div className="flex flex-wrap gap-2 mb-3">
           {question.tags.map((tag) => (
@@ -141,17 +190,19 @@ export default function QuestionCard({ question }: QuestionCardProps) {
             {formatDistanceToNow(new Date(question.createdAt), { addSuffix: true })}
           </span>
         </div>
-        <div className="flex items-center gap-4">
-          {question.viewCount !== undefined && (
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Eye className="h-4 w-4" />
-              <span className="text-sm">{question.viewCount}</span>
-            </div>
+        <div className="flex items-center gap-2">
+          {isAuthenticated && user?._id === question.author._id && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-red-400 hover:text-red-300 hover:bg-red-900/20 flex items-center gap-1"
+              onClick={handleDeleteQuestion}
+              disabled={isDeleting}
+            >
+              <Trash2 className="h-4 w-4" />
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
           )}
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <MessageSquare className="h-4 w-4" />
-            <span className="text-sm">{question.answerCount}</span>
-          </div>
         </div>
       </CardFooter>
     </Card>

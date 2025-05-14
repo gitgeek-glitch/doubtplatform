@@ -16,6 +16,8 @@ import ProfilePage from "@/pages/profile"
 import AuthPage from "@/pages/auth"
 import NotFound from "@/pages/not-found"
 import { ThemeToggle } from "./components/theme-toggle"
+import { PersistGate } from "redux-persist/integration/react"
+import { persistor } from "./redux/store"
 
 // Protected route component that uses Redux state
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -51,7 +53,7 @@ const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const isAuthPage = location.pathname === "/auth";
-  
+
   return (
     <div className="min-h-screen bg-background text-foreground" data-scroll-container>
       {!isAuthPage && <Navbar />}
@@ -67,81 +69,83 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 function App() {
   const dispatch = useAppDispatch()
   const { isLoading } = useAppSelector(state => state.auth)
-  
+
   useEffect(() => {
     dispatch(checkAuthStatus())
   }, [dispatch])
-  
+
   // Show global loading state during initial auth check
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   }
-  
+
   return (
     <ThemeProvider defaultTheme="dark" storageKey="doubt-platform-theme">
-      <Router>
-        <LocomotiveScrollProvider>
-          <AppLayout>
-            <Routes>
-              {/* Public routes */}
-              <Route
-                path="/"
-                element={
-                  <PublicOnlyRoute>
-                    <LandingPage />
-                  </PublicOnlyRoute>
-                }
-              />
-              <Route
-                path="/auth"
-                element={
-                  <PublicOnlyRoute>
-                    <AuthPage />
-                  </PublicOnlyRoute>
-                }
-              />
+      <PersistGate loading={<div className="flex items-center justify-center min-h-screen">Loading...</div>} persistor={persistor}>
+        <Router>
+          <LocomotiveScrollProvider>
+            <AppLayout>
+              <Routes>
+                {/* Public routes */}
+                <Route
+                  path="/"
+                  element={
+                    <PublicOnlyRoute>
+                      <LandingPage />
+                    </PublicOnlyRoute>
+                  }
+                />
+                <Route
+                  path="/auth"
+                  element={
+                    <PublicOnlyRoute>
+                      <AuthPage />
+                    </PublicOnlyRoute>
+                  }
+                />
 
-              {/* Protected routes */}
-              <Route
-                path="/home"
-                element={
-                  <ProtectedRoute>
-                    <HomePage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/question/:id"
-                element={
-                  <ProtectedRoute>
-                    <QuestionDetailPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/ask"
-                element={
-                  <ProtectedRoute>
-                    <AskQuestionPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile/:id"
-                element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Protected routes */}
+                <Route
+                  path="/home"
+                  element={
+                    <ProtectedRoute>
+                      <HomePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/question/:id"
+                  element={
+                    <ProtectedRoute>
+                      <QuestionDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/ask"
+                  element={
+                    <ProtectedRoute>
+                      <AskQuestionPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/:id"
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* 404 route */}
-              <Route path="/404" element={<NotFound />} />
-              <Route path="*" element={<Navigate to="/404" replace />} />
-            </Routes>
-          </AppLayout>
-        </LocomotiveScrollProvider>
-      </Router>
+                {/* 404 route */}
+                <Route path="/404" element={<NotFound />} />
+                <Route path="*" element={<Navigate to="/404" replace />} />
+              </Routes>
+            </AppLayout>
+          </LocomotiveScrollProvider>
+        </Router>
+      </PersistGate>
     </ThemeProvider>
   )
 }

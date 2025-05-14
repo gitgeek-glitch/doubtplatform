@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
-import { api, isRateLimited } from "@/lib/api"
+import { api } from "@/lib/api"
 
 interface LeaderboardUser {
   _id: string
@@ -36,10 +36,6 @@ export const fetchLeaderboard = createAsyncThunk(
   "leaderboard/fetchLeaderboard", 
   async (_, { rejectWithValue, getState }) => {
     try {
-      // Check if endpoint is currently rate limited
-      if (isRateLimited("/users/leaderboard")) {
-        return rejectWithValue("Rate limited. Please try again later.")
-      }
 
       // Check if we have cached data that's still fresh
       const state = getState() as { leaderboard: LeaderboardState }
