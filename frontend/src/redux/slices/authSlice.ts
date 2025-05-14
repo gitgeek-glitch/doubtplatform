@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import { api } from '@/lib/api'
+import { api, isRateLimited, getRateLimitInfo } from '@/lib/api'
 
 interface User {
   _id: string
@@ -14,6 +14,8 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
+  rateLimited: boolean
+  rateLimitRetryAfter: number
 }
 
 const initialState: AuthState = {
@@ -21,6 +23,8 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: true,
   error: null,
+  rateLimited: false,
+  rateLimitRetryAfter: 0
 }
 
 // Async thunks
@@ -53,17 +57,49 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/login', { email, password })
+      // Check if endpoint is rate limited before making request
+      const endpoint = '/auth/login';
+      if (isRateLimited(endpoint)) {
+        const rateLimitInfo = getRateLimitInfo(endpoint);
+        const waitTimeMs = Math.max(rateLimitInfo.nextAllowedTime - Date.now(), 1000);
+        const waitTimeSec = Math.ceil(waitTimeMs / 1000);
+        
+        return rejectWithValue({
+          message: `Too many login attempts. Please try again in ${waitTimeSec} seconds.`,
+          rateLimited: true,
+          retryAfter: waitTimeMs
+        });
+      }
+      
+      const response = await api.post('/auth/login', { email, password });
       
       // Save token to localStorage
-      localStorage.setItem('token', response.data.token)
+      localStorage.setItem('token', response.data.token);
       
       // Set default auth header
-      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`
+      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       
-      return response.data.user
+      return response.data.user;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Invalid email or password')
+      // Check if rate limited
+      if (error.response?.status === 429) {
+        // Get retry-after header or use default
+        const retryAfter = error.response.headers["retry-after"];
+        const waitTimeMs = (retryAfter ? parseInt(retryAfter, 10) * 1000 : 30000);
+        const waitTimeSec = Math.ceil(waitTimeMs / 1000);
+        
+        return rejectWithValue({
+          message: error.response?.data || `Too many login attempts. Please try again in ${waitTimeSec} seconds.`,
+          rateLimited: true,
+          retryAfter: waitTimeMs,
+          status: 429
+        });
+      }
+      
+      return rejectWithValue({
+        message: error.response?.data?.message || 'Invalid email or password',
+        rateLimited: false
+      });
     }
   }
 )
@@ -75,6 +111,20 @@ export const registerUser = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      // Check if endpoint is rate limited before making request
+      const endpoint = '/auth/register'
+      if (isRateLimited(endpoint)) {
+        const rateLimitInfo = getRateLimitInfo(endpoint)
+        const waitTimeMs = rateLimitInfo.retryAfter
+        const waitTimeSec = Math.ceil(waitTimeMs / 1000)
+        
+        return rejectWithValue({
+          message: `Too many registration attempts. Please try again in ${waitTimeSec} seconds.`,
+          rateLimited: true,
+          retryAfter: waitTimeMs
+        })
+      }
+      
       const response = await api.post('/auth/register', { name, email, password })
       
       // Save token to localStorage
@@ -85,7 +135,23 @@ export const registerUser = createAsyncThunk(
       
       return response.data.user
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Could not create account')
+      // Check if rate limited
+      if (error.response?.status === 429) {
+        const rateLimitInfo = getRateLimitInfo('/auth/register')
+        const waitTimeMs = rateLimitInfo.retryAfter
+        const waitTimeSec = Math.ceil(waitTimeMs / 1000)
+        
+        return rejectWithValue({
+          message: `Too many registration attempts. Please try again in ${waitTimeSec} seconds.`,
+          rateLimited: true,
+          retryAfter: waitTimeMs
+        })
+      }
+      
+      return rejectWithValue({
+        message: error.response?.data?.message || 'Could not create account',
+        rateLimited: false
+      })
     }
   }
 )
@@ -105,9 +171,13 @@ const authSlice = createSlice({
       state.user = null
       state.isAuthenticated = false
       state.error = null
+      state.rateLimited = false
+      state.rateLimitRetryAfter = 0
     },
     clearError: (state) => {
       state.error = null
+      state.rateLimited = false
+      state.rateLimitRetryAfter = 0
     },
   },
   extraReducers: (builder) => {
@@ -136,32 +206,60 @@ const authSlice = createSlice({
       .addCase(loginUser.pending, (state) => {
         state.isLoading = true
         state.error = null
+        state.rateLimited = false
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false
         state.user = action.payload
         state.isAuthenticated = true
         state.error = null
+        state.rateLimited = false
+        state.rateLimitRetryAfter = 0
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false
-        state.error = action.payload as string
+        
+        // Handle rate limiting rejection
+        const payload = action.payload as any
+        if (payload?.rateLimited) {
+          state.rateLimited = true
+          state.rateLimitRetryAfter = payload.retryAfter || 0
+        } else {
+          state.rateLimited = false
+          state.rateLimitRetryAfter = 0
+        }
+        
+        state.error = payload?.message || 'Login failed'
       })
       
       // Register
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true
         state.error = null
+        state.rateLimited = false
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.isLoading = false
         state.user = action.payload
         state.isAuthenticated = true
         state.error = null
+        state.rateLimited = false
+        state.rateLimitRetryAfter = 0
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false
-        state.error = action.payload as string
+        
+        // Handle rate limiting rejection
+        const payload = action.payload as any
+        if (payload?.rateLimited) {
+          state.rateLimited = true
+          state.rateLimitRetryAfter = payload.retryAfter || 0
+        } else {
+          state.rateLimited = false
+          state.rateLimitRetryAfter = 0
+        }
+        
+        state.error = payload?.message || 'Registration failed'
       })
   },
 })

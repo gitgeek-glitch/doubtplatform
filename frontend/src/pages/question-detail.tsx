@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, Link } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import {
@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowUp, ArrowDown, MessageSquare, Check, Share2 } from 'lucide-react'
+import { ArrowUp, ArrowDown, MessageSquare, Check, Share2, RefreshCw } from 'lucide-react'
 import { formatDistanceToNow } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -39,23 +39,103 @@ export default function QuestionDetailPage() {
   } = useAppSelector(state => state.questions)
   const [answerContent, setAnswerContent] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const lastFetchTimeRef = useRef<number>(0)
 
-  // Fetch question details on mount
-  useEffect(() => {
-    if (id) {
-      dispatch(fetchQuestionDetails(id))
+  // Fetch question details on mount with cache busting
+  const fetchQuestionWithDetails = (forceRefresh = false) => {
+    if (!id) return
+
+    const now = Date.now()
+    // Only fetch if forced or if it's been more than 10 seconds since last fetch
+    if (forceRefresh || now - lastFetchTimeRef.current > 10000) {
+      lastFetchTimeRef.current = now
       
-      // Fetch votes if authenticated
-      if (isAuthenticated) {
-        dispatch(fetchVotes(id))
+      if (forceRefresh) {
+        setIsRefreshing(true)
       }
+      
+      dispatch(fetchQuestionDetails(id))
+        .unwrap()
+        .then(() => {
+          if (isAuthenticated) {
+            dispatch(fetchVotes(id))
+          }
+          if (forceRefresh) {
+            setIsRefreshing(false)
+            toast({
+              title: "Refreshed",
+              description: "Question and answers have been updated",
+            })
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching question details:", error)
+          if (forceRefresh) {
+            setIsRefreshing(false)
+            toast({
+              title: "Error",
+              description: "Failed to refresh question details",
+              variant: "destructive",
+            })
+          }
+        })
     }
+  }
+
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchQuestionWithDetails(true)
     
     // Cleanup on unmount
     return () => {
       dispatch(resetQuestionState())
+      if (refreshInterval) {
+        clearInterval(refreshInterval)
+      }
     }
   }, [id, isAuthenticated, dispatch])
+
+  // Set up polling for new answers
+  useEffect(() => {
+    if (!id) return
+
+    // Poll for new answers every 15 seconds
+    const interval = setInterval(() => {
+      fetchQuestionWithDetails(false)
+    }, 15000)
+
+    setRefreshInterval(interval)
+
+    // Clean up interval on unmount
+    return () => {
+      clearInterval(interval)
+    }
+  }, [id, dispatch])
+
+  // Refresh answers when window regains focus
+  useEffect(() => {
+    if (!id) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchQuestionWithDetails(true)
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    // Clean up event listener on unmount
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [id, dispatch])
+
+  // Handle manual refresh
+  const handleRefresh = () => {
+    fetchQuestionWithDetails(true)
+  }
 
   // Handle question vote
   const handleQuestionVote = async (value: number) => {
@@ -73,7 +153,7 @@ export default function QuestionDetailPage() {
     try {
       // If user already voted the same way, remove the vote
       const finalValue = questionVote === value ? 0 : value
-      dispatch(voteQuestion({ questionId: id, value: finalValue }))
+      await dispatch(voteQuestion({ questionId: id, value: finalValue })).unwrap()
     } catch (error) {
       toast({
         title: "Error",
@@ -99,7 +179,7 @@ export default function QuestionDetailPage() {
       // If user already voted the same way, remove the vote
       const finalValue = currentVote === value ? 0 : value
       
-      dispatch(voteAnswer({ answerId, value: finalValue }))
+      await dispatch(voteAnswer({ answerId, value: finalValue })).unwrap()
     } catch (error) {
       toast({
         title: "Error",
@@ -121,12 +201,15 @@ export default function QuestionDetailPage() {
     }
 
     try {
-      dispatch(acceptAnswer(answerId))
+      await dispatch(acceptAnswer(answerId)).unwrap()
       
       toast({
         title: "Answer accepted",
         description: "You've marked this answer as accepted",
       })
+      
+      // Refresh question details to ensure UI is up to date
+      fetchQuestionWithDetails(true)
     } catch (error) {
       toast({
         title: "Error",
@@ -162,13 +245,16 @@ export default function QuestionDetailPage() {
 
     try {
       setSubmitting(true)
-      await dispatch(submitAnswer({ questionId: id, content: answerContent }))
+      await dispatch(submitAnswer({ questionId: id, content: answerContent })).unwrap()
       setAnswerContent("")
 
       toast({
         title: "Answer submitted",
         description: "Your answer has been posted successfully",
       })
+      
+      // Refresh question details to show the new answer
+      fetchQuestionWithDetails(true)
     } catch (error) {
       toast({
         title: "Error",
@@ -189,7 +275,7 @@ export default function QuestionDetailPage() {
     })
   }
 
-  if (loading) {
+  if (loading && !question) {
     return (
       <div className="space-y-8">
         <div className="space-y-4">
@@ -247,10 +333,27 @@ export default function QuestionDetailPage() {
         <div className="space-y-6">
           <div className="question-detail-header">
             <h1 className="question-detail-title">{question.title}</h1>
-            <Button variant="outline" size="sm" className="question-detail-share" onClick={handleShareQuestion}>
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-9 w-9" 
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                title="Refresh question and answers"
+              >
+                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="question-detail-share" 
+                onClick={handleShareQuestion}
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Share
+              </Button>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -313,10 +416,23 @@ export default function QuestionDetailPage() {
 
         {/* Answers */}
         <div className="space-y-6">
-          <h2 className="question-detail-answers-header">
-            <MessageSquare className="h-5 w-5" />
-            {answers.length} {answers.length === 1 ? "Answer" : "Answers"}
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="question-detail-answers-header">
+              <MessageSquare className="h-5 w-5" />
+              {answers.length} {answers.length === 1 ? "Answer" : "Answers"}
+            </h2>
+            {answers.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
+                {isRefreshing ? "Refreshing..." : "Refresh"}
+              </Button>
+            )}
+          </div>
 
           {sortedAnswers.length > 0 ? (
             <div className="space-y-8">
@@ -411,7 +527,7 @@ export default function QuestionDetailPage() {
           <div className="flex justify-end">
             <Button
               className="ask-question-submit"
-              disabled={submitting || !isAuthenticated}
+              disabled={submitting || !isAuthenticated || !answerContent.trim()}
               onClick={handleSubmitAnswer}
             >
               {submitting ? "Submitting..." : "Post Your Answer"}

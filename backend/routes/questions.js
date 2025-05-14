@@ -10,49 +10,51 @@ const router = express.Router()
 // Get all questions with filtering and pagination
 router.get("/", async (req, res) => {
   try {
-    const { page = 1, limit = 10, sort = "latest", category, search, tag } = req.query
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+    const sort = req.query.sort || "latest"
+    const category = req.query.category
+    const search = req.query.search
+    const tag = req.query.tag
 
-    const query = {}
-
-    // Apply category filter
+    let query = {}
     if (category && category !== "all") {
       query.category = category
     }
-
-    // Apply tag filter
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { content: { $regex: search, $options: "i" } },
+      ]
+    }
     if (tag) {
       query.tags = tag
     }
 
-    // Apply search filter
-    if (search) {
-      query.$text = { $search: search }
-    }
-
-    // Determine sort order
-    let sortOption = {}
+    // Sort configuration
+    let sortConfig = {}
     switch (sort) {
-      case "trending":
-        sortOption = { upvotes: -1, createdAt: -1 }
-        break
-      case "unanswered":
-        query.answerCount = 0
-        sortOption = { createdAt: -1 }
-        break
       case "latest":
+        sortConfig = { createdAt: -1 }
+        break
+      case "popular":
+        sortConfig = { upvotes: -1 }
+        break
       default:
-        sortOption = { createdAt: -1 }
+        sortConfig = { createdAt: -1 }
     }
 
-    // Execute query with pagination
     const questions = await Question.find(query)
-      .sort(sortOption)
-      .limit(Number(limit))
-      .skip((Number(page) - 1) * Number(limit))
-      .populate("author", "name avatar")
-      .populate("answerCount")
+      .sort(sortConfig)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate("author", "name avatar reputation")
+      .lean()
 
-    res.json(questions)
+    res.json({
+      questions,
+      hasMore: questions.length === limit,
+    })
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
@@ -240,8 +242,9 @@ router.post("/:id/vote", auth, async (req, res) => {
 router.get("/:id/answers", async (req, res) => {
   try {
     const answers = await Answer.find({ question: req.params.id })
-      .sort({ isAccepted: -1, upvotes: -1, createdAt: -1 })
+      .sort({ upvotes: -1, createdAt: -1 }) // Sort by upvotes first, then by date
       .populate("author", "name avatar reputation")
+      .lean()
 
     res.json(answers)
   } catch (error) {

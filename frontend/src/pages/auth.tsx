@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Check, X, ArrowLeft } from 'lucide-react'
+import { Check, X, ArrowLeft, AlertTriangle } from 'lucide-react'
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -19,7 +19,10 @@ export default function AuthPage() {
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("login")
   const [passwordFocused, setPasswordFocused] = useState(false)
-  
+  const [rateLimited, setRateLimited] = useState(false)
+  const [rateLimitRetryAfter, setRateLimitRetryAfter] = useState(0)
+  const [rateLimitCountdown, setRateLimitCountdown] = useState(0)
+
   // Login form state
   const [loginData, setLoginData] = useState({
     email: "",
@@ -70,6 +73,31 @@ export default function AuthPage() {
       special: /[^A-Za-z0-9]/.test(password),
     })
   }, [registerData.password])
+  
+  // Handle rate limit countdown
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (rateLimited && rateLimitRetryAfter > 0) {
+      setRateLimitCountdown(rateLimitRetryAfter);
+      
+      intervalId = setInterval(() => {
+        setRateLimitCountdown((prev) => {
+          if (prev <= 1) {
+            setRateLimited(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [rateLimited, rateLimitRetryAfter]);
   
   // Handle login form input changes
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,47 +167,80 @@ export default function AuthPage() {
   }
   
   // Handle login form submission
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Fix the handleLogin function to properly handle rate limiting
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault()
+
+  if (rateLimited) {
+    toast({
+      title: "Rate limited",
+      description: `Too many attempts. Please try again in ${rateLimitCountdown} seconds.`,
+      variant: "destructive"
+    });
+    return;
+  }
+  
+  if (!validateLoginForm()) {
+    toast({
+      title: "Login failed",
+      description: "Please check your inputs and try again.",
+      variant: "destructive"
+    })
+    return;
+  }
+  
+  try {
+    const resultAction = await dispatch(loginUser(loginData));
     
-    if (!validateLoginForm()) {
+    if (loginUser.fulfilled.match(resultAction)) {
       toast({
-        title: "Login failed",
-        description: "Please check your inputs and try again.",
-        variant: "destructive"
-      })
-      return
-    }
-    
-    try {
-      const resultAction = await dispatch(loginUser(loginData))
+        title: "Login successful",
+        description: "Welcome back!",
+      });
+      navigate("/");
+    } else if (loginUser.rejected.match(resultAction)) {
+      const payload = resultAction.payload as { rateLimited?: boolean; retryAfter?: number; message?: string };
       
-      if (loginUser.fulfilled.match(resultAction)) {
+      // Check if rate limited from payload instead of status
+      if (payload?.rateLimited) {
+        setRateLimited(true);
+        setRateLimitRetryAfter(Math.ceil((payload.retryAfter || 30000) / 1000));
         toast({
-          title: "Login successful",
-          description: "Welcome back!",
-        })
-        navigate("/")
-      } else if (loginUser.rejected.match(resultAction)) {
+          title: "Too many attempts",
+          description: payload.message || "Please wait before trying again",
+          variant: "destructive"
+        });
+      } else {
         toast({
           title: "Login failed",
-          description: resultAction.payload as string || "Invalid credentials",
+          description: payload?.message || "An error occurred",
           variant: "destructive"
-        })
+        });
       }
-    } catch (error) {
-      console.error("Login failed:", error)
-      toast({
-        title: "Login failed",
-        description: "An unexpected error occurred",
-        variant: "destructive"
-      })
     }
+  } catch (error) {
+    console.error("Login failed:", error);
+    toast({
+      title: "Login failed",
+      description: "An unexpected error occurred",
+      variant: "destructive"
+    });
   }
+}
   
   // Handle register form submission
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Don't attempt register if rate limited
+    if (rateLimited) {
+      toast({
+        title: "Rate limited",
+        description: `Too many attempts. Please try again in ${rateLimitCountdown} seconds.`,
+        variant: "destructive"
+      })
+      return
+    }
     
     if (!validateRegisterForm()) {
       toast({
@@ -204,11 +265,14 @@ export default function AuthPage() {
         })
         navigate("/")
       } else if (registerUser.rejected.match(resultAction)) {
-        toast({
-          title: "Registration failed",
-          description: resultAction.payload as string || "Could not create account",
-          variant: "destructive"
-        })
+        // If rate limited, the toast is already shown by the rate limit effect
+        if (!rateLimited) {
+          toast({
+            title: "Registration failed",
+            description: error || "Could not create account",
+            variant: "destructive"
+          })
+        }
       }
     } catch (error) {
       console.error("Registration failed:", error)
@@ -242,6 +306,18 @@ export default function AuthPage() {
           <p className="auth-subtitle">Your college doubt-solving platform</p>
         </div>
 
+        {rateLimited && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 mb-4 rounded-md flex items-start">
+            <AlertTriangle className="h-5 w-5 mr-3 mt-0.5 flex-shrink-0" />
+            <div>
+              <h4 className="font-semibold">Too many attempts</h4>
+              <p className="text-sm">
+                Please wait {rateLimitCountdown} seconds before trying again.
+              </p>
+            </div>
+          </div>
+        )}
+
         <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="auth-tabs-list">
             <TabsTrigger 
@@ -272,7 +348,7 @@ export default function AuthPage() {
                   className={cn("auth-input", validationErrors.email && "auth-input-error")}
                   autoComplete="username"
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || rateLimited}
                 />
                 {validationErrors.email && (
                   <p className="auth-error-message">{validationErrors.email}</p>
@@ -296,17 +372,21 @@ export default function AuthPage() {
                   className={cn("auth-input", validationErrors.password && "auth-input-error")}
                   required
                   autoComplete="current-password"
-                  disabled={isLoading}
+                  disabled={isLoading || rateLimited}
                 />
                 {validationErrors.password && (
                   <p className="auth-error-message">{validationErrors.password}</p>
                 )}
               </div>
 
-              {error && <p className="auth-error-message">{error}</p>}
+              {error && !rateLimited && <p className="auth-error-message">{error}</p>}
 
-              <Button type="submit" className="auth-submit" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign In"}
+              <Button 
+                type="submit" 
+                className="auth-submit" 
+                disabled={isLoading || rateLimited}
+              >
+                {isLoading ? "Signing in..." : rateLimited ? `Try again in ${rateLimitCountdown}s` : "Sign In"}
               </Button>
 
               <div className="auth-footer">
@@ -336,7 +416,7 @@ export default function AuthPage() {
                   onChange={handleRegisterChange}
                   className={cn("auth-input", validationErrors.name && "auth-input-error")}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || rateLimited}
                 />
                 {validationErrors.name && (
                   <p className="auth-error-message">{validationErrors.name}</p>
@@ -354,7 +434,7 @@ export default function AuthPage() {
                   onChange={handleRegisterChange}
                   className={cn("auth-input", validationErrors.email && "auth-input-error")}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || rateLimited}
                 />
                 {validationErrors.email && (
                   <p className="auth-error-message">{validationErrors.email}</p>
@@ -376,7 +456,7 @@ export default function AuthPage() {
                   className={cn("auth-input", validationErrors.password && "auth-input-error")}
                   required
                   autoComplete="new-password"
-                  disabled={isLoading}
+                  disabled={isLoading || rateLimited}
                 />
                 {validationErrors.password && (
                   <p className="auth-error-message">{validationErrors.password}</p>
@@ -443,17 +523,21 @@ export default function AuthPage() {
                   className={cn("auth-input", validationErrors.confirmPassword && "auth-input-error")}
                   required
                   autoComplete="new-password"
-                  disabled={isLoading}
+                  disabled={isLoading || rateLimited}
                 />
                 {validationErrors.confirmPassword && (
                   <p className="auth-error-message">{validationErrors.confirmPassword}</p>
                 )}
               </div>
 
-              {error && <p className="auth-error-message">{error}</p>}
+              {error && !rateLimited && <p className="auth-error-message">{error}</p>}
 
-              <Button type="submit" className="auth-submit" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Create Account"}
+              <Button 
+                type="submit" 
+                className="auth-submit" 
+                disabled={isLoading || rateLimited}
+              >
+                {isLoading ? "Creating account..." : rateLimited ? `Try again in ${rateLimitCountdown}s` : "Create Account"}
               </Button>
 
               <div className="auth-footer">

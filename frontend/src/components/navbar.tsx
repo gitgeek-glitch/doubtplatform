@@ -96,16 +96,18 @@ export default function Navbar() {
             </form>
           )}
         </div>
-
+        
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={toggleTheme} className="navbar-theme-toggle">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
-
+          
+          {isAuthenticated && (
           <Button variant="ghost" size="icon" className="navbar-notification">
             <Bell className="h-4 w-4" />
             <span className="navbar-notification-badge">3</span>
           </Button>
+          )}
 
           {isAuthenticated ? (
             <>

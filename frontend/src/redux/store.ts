@@ -4,6 +4,7 @@ import authReducer from './slices/authSlice'
 import uiReducer from './slices/uiSlice'
 import questionsReducer from './slices/questionsSlice'
 import usersReducer from './slices/usersSlice'
+import leaderboardReducer from "./slices/leaderboardSlice"
 
 // Enable MapSet to allow Sets and Maps in the Redux store
 enableMapSet()
@@ -14,6 +15,7 @@ export const store = configureStore({
     ui: uiReducer,
     questions: questionsReducer,
     users: usersReducer,
+    leaderboard: leaderboardReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
