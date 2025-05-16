@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
-import { RootState } from "../store" // Add this import
+import type { RootState } from "../store" // Add this import
 import { api } from "@/lib/api"
 
 interface Author {
@@ -96,69 +96,63 @@ export const fetchQuestions = createAsyncThunk<
   {
     state: RootState
   }
->(
-  "questions/fetchQuestions",
-  async (params: FetchQuestionsParams = {}, { rejectWithValue, getState }) => {
-    try {
-      const state = getState()
-      const now = Date.now()
-      const timeSinceLastFetch = now - state.questions.lastFetchTime
+>("questions/fetchQuestions", async (params: FetchQuestionsParams = {}, { rejectWithValue, getState }) => {
+  try {
+    const state = getState()
+    const now = Date.now()
+    const timeSinceLastFetch = now - state.questions.lastFetchTime
 
-      const {
-        page = 1,
-        filter = "latest",
-        category = "all",
-        search = "",
-        tag = "",
-        loadMore = false,
-        forceRefresh = page === 1,
-      } = params
+    const {
+      page = 1,
+      filter = "latest",
+      category = "all",
+      search = "",
+      tag = "",
+      loadMore = false,
+      forceRefresh = page === 1,
+    } = params
 
-      // Check if we can use cached data
-      if (!forceRefresh && !loadMore && timeSinceLastFetch < 10000) {
-        return {
-          questions: state.questions.questions,
-          loadMore: false,
-          hasMore: state.questions.hasMore,
-          lastFetchTime: state.questions.lastFetchTime,
-          fromCache: true,
-        }
-      }
-
-      const queryParams = new URLSearchParams({
-        page: String(page),
-        limit: "10",
-        sort: filter,
-        ...(category !== "all" && { category }),
-        ...(search && { search }),
-        ...(tag && { tag }),
-        _t: now.toString(), // Add cache busting
-      })
-
-      const response = await api.get(`/questions?${queryParams}`)
+    // Extend cache duration to 30 seconds
+    if (!forceRefresh && !loadMore && timeSinceLastFetch < 30000) {
       return {
-        questions: response.data.questions || [],
-        loadMore,
-        hasMore: response.data.hasMore,
-        lastFetchTime: now,
-        fromCache: false,
+        questions: state.questions.questions,
+        loadMore: false,
+        hasMore: state.questions.hasMore,
+        lastFetchTime: state.questions.lastFetchTime,
+        fromCache: true,
       }
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch questions")
     }
-  },
-)
+
+    const queryParams = new URLSearchParams({
+      page: String(page),
+      limit: "10",
+      sort: filter,
+      ...(category !== "all" && { category }),
+      ...(search && { search }),
+      ...(tag && { tag }),
+    })
+
+    const response = await api.get(`/questions?${queryParams}`)
+    return {
+      questions: response.data.questions || [],
+      loadMore,
+      hasMore: response.data.hasMore,
+      lastFetchTime: now,
+      fromCache: false,
+    }
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || "Failed to fetch questions")
+  }
+})
 
 export const fetchQuestionDetails = createAsyncThunk(
   "questions/fetchQuestionDetails",
   async (id: string, { rejectWithValue }) => {
     try {
-      // Add a cache-busting parameter to ensure fresh data
-      const now = Date.now()
       const [questionRes, answersRes, relatedRes] = await Promise.all([
-        api.get(`/questions/${id}?_t=${now}`),
-        api.get(`/questions/${id}/answers?_t=${now}`),
-        api.get(`/questions/${id}/related?_t=${now}`),
+        api.get(`/questions/${id}`),
+        api.get(`/questions/${id}/answers`),
+        api.get(`/questions/${id}/related`),
       ])
 
       return {
@@ -174,9 +168,7 @@ export const fetchQuestionDetails = createAsyncThunk(
 
 export const fetchVotes = createAsyncThunk("questions/fetchVotes", async (questionId: string, { rejectWithValue }) => {
   try {
-    // Add cache busting
-    const now = Date.now()
-    const response = await api.get(`/questions/${questionId}/votes?_t=${now}`)
+    const response = await api.get(`/questions/${questionId}/votes`)
     return {
       questionVote: response.data.questionVote || 0,
       answerVotes: response.data.answerVotes.reduce((acc: Record<string, number>, vote: any) => {
@@ -233,7 +225,7 @@ export const submitAnswer = createAsyncThunk(
 
       // Force refresh the question details to get the updated answer count and all answers
       await dispatch(fetchQuestionDetails(questionId))
-      
+
       // Force refresh votes for the new answer
       await dispatch(fetchVotes(questionId))
 
@@ -261,12 +253,14 @@ export const submitQuestion = createAsyncThunk(
 
       // Immediately add the new question to the state
       dispatch(addNewQuestion(response.data))
-      
+
       // Force refresh questions list with proper typing
-      await dispatch(fetchQuestions({
-        forceRefresh: true,
-        filter: "latest"
-      }) as any) // Type assertion needed due to dispatch typing limitations
+      await dispatch(
+        fetchQuestions({
+          forceRefresh: true,
+          filter: "latest",
+        }) as any,
+      ) // Type assertion needed due to dispatch typing limitations
 
       return response.data
     } catch (error: any) {
@@ -283,15 +277,15 @@ export const deleteQuestion = createAsyncThunk(
   async (questionId: string, { rejectWithValue, dispatch }) => {
     try {
       await api.delete(`/questions/${questionId}`)
-      
+
       // Force refresh questions list to update UI
       dispatch(clearCache())
-      
+
       return questionId
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || "Failed to delete question")
     }
-  }
+  },
 )
 
 // Delete an answer
@@ -304,7 +298,7 @@ export const deleteAnswer = createAsyncThunk(
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || "Failed to delete answer")
     }
-  }
+  },
 )
 
 const questionsSlice = createSlice({
@@ -506,7 +500,7 @@ const questionsSlice = createSlice({
       .addCase(submitQuestion.fulfilled, (state, action) => {
         state.loading = false
         state.lastFetchTime = 0 // Reset last fetch time to force refresh
-        
+
         // Add the new question to the beginning of the list
         const exists = state.questions.some((q) => q._id === action.payload._id)
         if (!exists) {
@@ -526,7 +520,7 @@ const questionsSlice = createSlice({
       .addCase(deleteQuestion.fulfilled, (state, action) => {
         state.loading = false
         // Remove the deleted question from the questions array
-        state.questions = state.questions.filter(question => question._id !== action.payload)
+        state.questions = state.questions.filter((question) => question._id !== action.payload)
         // If the current question is the deleted one, reset it
         if (state.currentQuestion && state.currentQuestion._id === action.payload) {
           state.currentQuestion = null
@@ -545,7 +539,7 @@ const questionsSlice = createSlice({
       .addCase(deleteAnswer.fulfilled, (state, action) => {
         state.loading = false
         // Remove the deleted answer from the answers array
-        state.answers = state.answers.filter(answer => answer._id !== action.payload)
+        state.answers = state.answers.filter((answer) => answer._id !== action.payload)
         // If the current question exists, decrement its answer count
         if (state.currentQuestion) {
           state.currentQuestion.answerCount = Math.max(0, state.currentQuestion.answerCount - 1)

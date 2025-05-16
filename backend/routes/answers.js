@@ -4,8 +4,16 @@ import Question from "../models/Question.js"
 import Vote from "../models/Vote.js"
 import User from "../models/User.js"
 import { auth } from "../middleware/auth.js"
+import { cache } from "../server.js"
 
 const router = express.Router()
+
+// Clear cache when data changes
+const clearCache = (pattern) => {
+  const keys = cache.keys();
+  const matchingKeys = keys.filter(key => key.includes(pattern));
+  matchingKeys.forEach(key => cache.del(key));
+};
 
 // Update an answer
 router.put("/:id", auth, async (req, res) => {
@@ -31,8 +39,12 @@ router.put("/:id", auth, async (req, res) => {
     // Populate author info
     await answer.populate("author", "name avatar")
 
+    // Clear related caches
+    clearCache(`/api/questions/${answer.question}/answers`);
+
     res.json(answer)
   } catch (error) {
+    console.error("Error updating answer:", error);
     res.status(500).json({ message: error.message })
   }
 })
@@ -52,22 +64,29 @@ router.delete("/:id", auth, async (req, res) => {
       return res.status(403).json({ message: "Not authorized to delete this answer" })
     }
 
-    // If this is the accepted answer, update the question
-    const question = await Question.findById(answer.question)
-    if (question && question.acceptedAnswer && question.acceptedAnswer.toString() === req.params.id) {
-      question.acceptedAnswer = null
-      question.isSolved = false
-      await question.save()
-    }
+    const questionId = answer.question;
 
-    // Delete all votes for this answer
-    await Vote.deleteMany({ answer: req.params.id })
+    // Use Promise.all for parallel operations
+    await Promise.all([
+      // If this is the accepted answer, update the question
+      Question.findOneAndUpdate(
+        { _id: questionId, acceptedAnswer: req.params.id },
+        { $set: { acceptedAnswer: null, isSolved: false } }
+      ),
+      
+      // Delete all votes for this answer
+      Vote.deleteMany({ answer: req.params.id }),
+      
+      // Delete the answer
+      answer.deleteOne()
+    ]);
 
-    // Delete the answer
-    await answer.deleteOne()
+    // Clear related caches
+    clearCache(`/api/questions/${questionId}/answers`);
 
     res.json({ message: "Answer deleted successfully" })
   } catch (error) {
+    console.error("Error deleting answer:", error);
     res.status(500).json({ message: error.message })
   }
 })
@@ -124,20 +143,25 @@ router.post("/:id/vote", auth, async (req, res) => {
 
     await answer.save()
 
-    // Update author reputation
-    const author = await User.findById(answer.author)
-    if (author) {
-      // Calculate reputation change
-      let repChange = 0
-      if (vote.value === 1) repChange = 10
-      else if (vote.value === -1) repChange = -2
+    // Update author reputation in the background
+    User.findById(answer.author).then(author => {
+      if (author) {
+        // Calculate reputation change
+        let repChange = 0
+        if (vote.value === 1) repChange = 10
+        else if (vote.value === -1) repChange = -2
 
-      author.reputation += repChange
-      await author.save()
-    }
+        author.reputation += repChange
+        return author.save()
+      }
+    }).catch(err => console.error("Error updating reputation:", err));
+
+    // Clear related caches
+    clearCache(`/api/questions/${answer.question}/answers`);
 
     res.json({ vote, answer })
   } catch (error) {
+    console.error("Error voting on answer:", error);
     res.status(500).json({ message: error.message })
   }
 })
@@ -160,39 +184,55 @@ router.post("/:id/accept", auth, async (req, res) => {
       return res.status(403).json({ message: "Only the question author can accept answers" })
     }
 
-    // If there's already an accepted answer, unaccept it
-    if (question.acceptedAnswer) {
-      const previousAccepted = await Answer.findById(question.acceptedAnswer)
-      if (previousAccepted) {
-        previousAccepted.isAccepted = false
-        await previousAccepted.save()
+    // Use Promise.all for parallel operations
+    const [previousAccepted] = await Promise.all([
+      // If there's already an accepted answer, unaccept it
+      question.acceptedAnswer ? 
+        Answer.findByIdAndUpdate(
+          question.acceptedAnswer,
+          { isAccepted: false }
+        ) : null,
+      
+      // Accept the new answer
+      Answer.findByIdAndUpdate(
+        answer._id,
+        { isAccepted: true },
+        { new: true }
+      ),
+      
+      // Update question
+      Question.findByIdAndUpdate(
+        question._id,
+        { acceptedAnswer: answer._id, isSolved: true },
+        { new: true }
+      )
+    ]);
+
+    // Award reputation to answer author in the background
+    User.findById(answer.author).then(author => {
+      if (author) {
+        author.reputation += 15
+
+        // Check if user should get a badge
+        if (!author.badges.includes("Problem Solver") && author.reputation >= 100) {
+          author.badges.push("Problem Solver")
+        }
+
+        return author.save()
       }
-    }
+    }).catch(err => console.error("Error updating reputation:", err));
 
-    // Accept the new answer
-    answer.isAccepted = true
-    await answer.save()
+    // Clear related caches
+    clearCache(`/api/questions/${question._id}`);
+    clearCache(`/api/questions/${question._id}/answers`);
 
-    // Update question
-    question.acceptedAnswer = answer._id
-    question.isSolved = true
-    await question.save()
-
-    // Award reputation to answer author
-    const author = await User.findById(answer.author)
-    if (author) {
-      author.reputation += 15
-
-      // Check if user should get a badge
-      if (!author.badges.includes("Problem Solver") && author.reputation >= 100) {
-        author.badges.push("Problem Solver")
-      }
-
-      await author.save()
-    }
-
-    res.json({ answer, question })
+    res.json({ 
+      message: "Answer accepted successfully",
+      answerId: answer._id,
+      questionId: question._id
+    })
   } catch (error) {
+    console.error("Error accepting answer:", error);
     res.status(500).json({ message: error.message })
   }
 })

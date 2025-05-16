@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MessageSquare, Clock, TrendingUp, PlusCircle, RefreshCw } from 'lucide-react'
+import { MessageSquare, Clock, TrendingUp, PlusCircle, RefreshCw } from "lucide-react"
 import QuestionCard from "@/components/question-card"
 import TopContributors from "@/components/top-contributors"
 import VotesDistribution from "@/components/votes-distribution"
@@ -27,6 +27,8 @@ export default function HomePage() {
     search: "",
     tag: "",
   })
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastRefreshTime, setLastRefreshTime] = useState(0)
 
   // Parse query parameters
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function HomePage() {
           search: searchParams.search,
           tag: searchParams.tag,
           forceRefresh: true,
-        })
+        }),
       )
 
       // Reset scroll position when filter changes
@@ -65,55 +67,48 @@ export default function HomePage() {
     }
   }, [dispatch, filter, category, searchParams, isAuthenticated, scroll])
 
-  // Reduce polling interval for more frequent updates
+  // Reduce polling interval and use a more efficient approach
   useEffect(() => {
     if (!isAuthenticated) return
 
+    // Use a less frequent polling interval (60 seconds instead of 15)
     const intervalId = setInterval(() => {
-      dispatch(
-        fetchQuestions({
-          filter,
-          category,
-          search: searchParams.search,
-          tag: searchParams.tag,
-          forceRefresh: true,
-        })
-      )
-    }, 15000) // Poll every 15 seconds
-
-    return () => clearInterval(intervalId)
-  }, [dispatch, filter, category, searchParams, isAuthenticated])
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      // Force refresh when component mounts or when clearCacheFlag changes
-      dispatch(
-        fetchQuestions({
-          filter,
-          category,
-          search: searchParams.search,
-          tag: searchParams.tag,
-          forceRefresh: true,
-        })
-      )
-    }
-  }, [dispatch, isAuthenticated, filter, category, searchParams])
-
-  // Refresh questions when window regains focus
-  useEffect(() => {
-    if (!isAuthenticated) return
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
+      const now = Date.now()
+      // Only refresh if it's been at least 60 seconds since the last manual refresh
+      if (now - lastRefreshTime > 60000) {
         dispatch(
           fetchQuestions({
             filter,
             category,
             search: searchParams.search,
             tag: searchParams.tag,
-            forceRefresh: true,
-          })
+          }),
         )
+      }
+    }, 60000) // Poll every 60 seconds
+
+    return () => clearInterval(intervalId)
+  }, [dispatch, filter, category, searchParams, isAuthenticated, lastRefreshTime])
+
+  // Refresh questions when window regains focus, but with throttling
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const now = Date.now()
+        // Only refresh if it's been at least 30 seconds since the last refresh
+        if (now - lastRefreshTime > 30000) {
+          dispatch(
+            fetchQuestions({
+              filter,
+              category,
+              search: searchParams.search,
+              tag: searchParams.tag,
+            }),
+          )
+          setLastRefreshTime(now)
+        }
       }
     }
 
@@ -123,7 +118,7 @@ export default function HomePage() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [dispatch, filter, category, searchParams, isAuthenticated])
+  }, [dispatch, filter, category, searchParams, isAuthenticated, lastRefreshTime])
 
   // Handle filter change
   const handleFilterChange = (value: string) => {
@@ -145,24 +140,36 @@ export default function HomePage() {
         tag: searchParams.tag,
         loadMore: true,
         page: questions.length / 10 + 1,
-      })
+      }),
     )
   }
 
-  // Manual refresh
+  // Manual refresh with debounce and cooldown
   const handleRefresh = useCallback(
     debounce(() => {
-      dispatch(
-        fetchQuestions({
-          filter,
-          category,
-          search: searchParams.search,
-          tag: searchParams.tag,
-          forceRefresh: true,
+      const now = Date.now()
+      // Only allow refresh if it's been at least 5 seconds since the last refresh
+      if (now - lastRefreshTime > 5000) {
+        setRefreshing(true)
+        dispatch(
+          fetchQuestions({
+            filter,
+            category,
+            search: searchParams.search,
+            tag: searchParams.tag,
+            forceRefresh: true,
+          }),
+        ).finally(() => {
+          setRefreshing(false)
+          setLastRefreshTime(now)
         })
-      )
-    }, 1000),
-    [dispatch, filter, category, searchParams]
+      } else {
+        // If trying to refresh too soon, show a brief "refreshing" state
+        setRefreshing(true)
+        setTimeout(() => setRefreshing(false), 500)
+      }
+    }, 500),
+    [dispatch, filter, category, searchParams, lastRefreshTime],
   )
 
   // Categories for filtering
@@ -189,8 +196,8 @@ export default function HomePage() {
             {searchParams.search
               ? `Search results for "${searchParams.search}"`
               : searchParams.tag
-              ? `Questions tagged with "${searchParams.tag}"`
-              : "Explore Questions"}
+                ? `Questions tagged with "${searchParams.tag}"`
+                : "Explore Questions"}
           </h1>
           <p className="home-subtitle">Discover and solve interesting problems from your peers</p>
         </div>
@@ -227,8 +234,15 @@ export default function HomePage() {
           </Tabs>
 
           <div className="flex gap-2">
-            <Button onClick={handleRefresh} variant="outline" size="icon" className="h-10 w-10" title="Refresh questions">
-              <RefreshCw className="h-4 w-4" />
+            <Button
+              onClick={handleRefresh}
+              variant="outline"
+              size="icon"
+              className="h-10 w-10"
+              title="Refresh questions"
+              disabled={refreshing}
+            >
+              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
             </Button>
 
             <Button onClick={() => navigate("/ask")} className="ask-question-submit">

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import {
@@ -22,11 +22,12 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowUp, ArrowDown, MessageSquare, Check, Share2, RefreshCw, Trash2, AlertTriangle } from 'lucide-react'
+import { ArrowUp, ArrowDown, MessageSquare, Check, Share2, RefreshCw, Trash2, AlertTriangle } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import MarkdownRenderer from "@/components/markdown-renderer"
+import debounce from "lodash/debounce"
 
 export default function QuestionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -43,21 +44,24 @@ export default function QuestionDetailPage() {
   } = useAppSelector((state) => state.questions)
   const [answerContent, setAnswerContent] = useState("")
   const [submitting, setSubmitting] = useState(false)
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null)
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isDeletingQuestion, setIsDeletingQuestion] = useState(false)
   const [deletingAnswerId, setDeletingAnswerId] = useState<string | null>(null)
   const lastFetchTimeRef = useRef<number>(0)
+  const stableToast = useRef(toast)
+  const fetchingRef = useRef<boolean>(false)
   const navigate = useNavigate()
 
   // Fetch question details on mount with cache busting
-  const fetchQuestionWithDetails = (forceRefresh = false) => {
-    if (!id) return
+const fetchQuestionWithDetails = useCallback(
+  (forceRefresh = false) => {
+    if (!id || fetchingRef.current) return
 
     const now = Date.now()
-    // Only fetch if forced or if it's been more than 10 seconds since last fetch
-    if (forceRefresh || now - lastFetchTimeRef.current > 10000) {
+    if (forceRefresh || now - lastFetchTimeRef.current > 30000) {
       lastFetchTimeRef.current = now
+      fetchingRef.current = true
 
       if (forceRefresh) {
         setIsRefreshing(true)
@@ -67,67 +71,85 @@ export default function QuestionDetailPage() {
         .unwrap()
         .then(() => {
           if (isAuthenticated) {
-            dispatch(fetchVotes(id))
+            return dispatch(fetchVotes(id)).unwrap()
           }
+        })
+        .then(() => {
           if (forceRefresh) {
             setIsRefreshing(false)
-            toast({
+            stableToast.current({
               title: "Refreshed",
               description: "Question and answers have been updated",
             })
           }
+          fetchingRef.current = false
         })
         .catch((error) => {
           console.error("Error fetching question details:", error)
           if (forceRefresh) {
             setIsRefreshing(false)
-            toast({
+            stableToast.current({
               title: "Error",
               description: "Failed to refresh question details",
               variant: "destructive",
             })
           }
+          fetchingRef.current = false
         })
     }
-  }
+  },
+  [id, isAuthenticated, dispatch] // ❌ removed `toast`
+)
 
   // Initial fetch on mount
   useEffect(() => {
+  if (id) {
     fetchQuestionWithDetails(true)
+  }
 
-    // Cleanup on unmount
-    return () => {
-      dispatch(resetQuestionState())
-      if (refreshInterval) {
-        clearInterval(refreshInterval)
-      }
+  return () => {
+    dispatch(resetQuestionState())
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current)
     }
-  }, [id, isAuthenticated, dispatch])
+  }
+}, [id, dispatch, fetchQuestionWithDetails])
+
 
   // Set up polling for new answers
   useEffect(() => {
-    if (!id) return
+  if (!id) return
 
-    // Poll for new answers every 15 seconds
-    const interval = setInterval(() => {
-      fetchQuestionWithDetails(false)
-    }, 15000)
+  // Clear existing interval if any
+  if (refreshIntervalRef.current) {
+    clearInterval(refreshIntervalRef.current)
+  }
 
-    setRefreshInterval(interval)
+  // Set polling interval
+  const interval = setInterval(() => {
+    fetchQuestionWithDetails(false)
+  }, 60000)
 
-    // Clean up interval on unmount
-    return () => {
-      clearInterval(interval)
-    }
-  }, [id, dispatch])
+  refreshIntervalRef.current = interval
 
-  // Refresh answers when window regains focus
+  // Cleanup on unmount
+  return () => {
+    clearInterval(interval)
+  }
+}, [id, fetchQuestionWithDetails])
+
+
+  // Refresh answers when window regains focus, but with throttling
   useEffect(() => {
     if (!id) return
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        fetchQuestionWithDetails(true)
+        const now = Date.now()
+        // Only refresh if it's been at least 30 seconds since last fetch
+        if (now - lastFetchTimeRef.current > 30000) {
+          fetchQuestionWithDetails(false)
+        }
       }
     }
 
@@ -137,12 +159,20 @@ export default function QuestionDetailPage() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [id, dispatch])
+  }, [id, fetchQuestionWithDetails])
 
-  // Handle manual refresh
-  const handleRefresh = () => {
-    fetchQuestionWithDetails(true)
-  }
+  // Handle manual refresh with debounce
+  const handleRefresh = debounce(() => {
+    const now = Date.now()
+    // Only allow refresh if it's been at least 5 seconds since last refresh
+    if (now - lastFetchTimeRef.current > 5000) {
+      fetchQuestionWithDetails(true)
+    } else {
+      // If trying to refresh too soon, show a brief "refreshing" state
+      setIsRefreshing(true)
+      setTimeout(() => setIsRefreshing(false), 500)
+    }
+  }, 500)
 
   // Handle question vote
   const handleQuestionVote = async (value: number) => {
@@ -226,52 +256,63 @@ export default function QuestionDetailPage() {
     }
   }
 
-  // Handle submit answer
-  const handleSubmitAnswer = async (e: React.FormEvent) => {
-    e.preventDefault()
+// Handle submit answer
+const handleSubmitAnswer = async (e: React.FormEvent) => {
+  e.preventDefault()
 
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to answer questions",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!answerContent.trim()) {
-      toast({
-        title: "Empty answer",
-        description: "Please write something before submitting",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!id) return
-
-    try {
-      setSubmitting(true)
-      await dispatch(submitAnswer({ questionId: id, content: answerContent })).unwrap()
-      setAnswerContent("")
-
-      toast({
-        title: "Answer submitted",
-        description: "Your answer has been posted successfully",
-      })
-
-      // Refresh question details to show the new answer
-      fetchQuestionWithDetails(true)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to submit your answer",
-        variant: "destructive",
-      })
-    } finally {
-      setSubmitting(false)
-    }
+  if (!isAuthenticated) {
+    toast({
+      title: "Authentication required",
+      description: "Please sign in to answer questions",
+      variant: "destructive",
+    })
+    return
   }
+
+  // Check if answer content is empty
+  if (!answerContent.trim()) {
+    toast({
+      title: "Empty answer",
+      description: "Please write something before submitting",
+      variant: "destructive",
+    })
+    return
+  }
+
+  // Add validation for minimum answer length (20 characters)
+  if (answerContent.trim().length < 20) {
+    toast({
+      title: "Answer too short",
+      description: "Your answer must be at least 20 characters long",
+      variant: "destructive",
+    })
+    return
+  }
+
+  if (!id) return
+
+  try {
+    setSubmitting(true)
+    await dispatch(submitAnswer({ questionId: id, content: answerContent })).unwrap()
+    setAnswerContent("")
+
+    toast({
+      title: "Answer submitted",
+      description: "Your answer has been posted successfully",
+    })
+
+    // Refresh question details to show the new answer
+    fetchQuestionWithDetails(true)
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to submit your answer",
+      variant: "destructive",
+    })
+  } finally {
+    setSubmitting(false)
+  }
+}
 
   // Handle share question
   const handleShareQuestion = () => {
@@ -300,15 +341,15 @@ export default function QuestionDetailPage() {
       }
 
       setIsDeletingQuestion(true)
-      
+
       const resultAction = await dispatch(deleteQuestion(id!))
-      
+
       if (deleteQuestion.fulfilled.match(resultAction)) {
         toast({
           title: "Question deleted",
           description: "Your question has been deleted successfully",
         })
-        
+
         // Navigate back to home page
         navigate("/")
       } else {
@@ -358,15 +399,15 @@ export default function QuestionDetailPage() {
       }
 
       setDeletingAnswerId(answerId)
-      
+
       const resultAction = await dispatch(deleteAnswer(answerId))
-      
+
       if (deleteAnswer.fulfilled.match(resultAction)) {
         toast({
           title: "Answer deleted",
           description: "The answer has been deleted successfully",
         })
-        
+
         // Refresh question details to update the UI
         fetchQuestionWithDetails(true)
       } else {
@@ -622,7 +663,7 @@ export default function QuestionDetailPage() {
                           </Avatar>
                         </div>
                       </div>
-                      
+
                       {isAuthenticated && (user?._id === answer.author._id || user?._id === question.author._id) && (
                         <div className="flex justify-end mt-2">
                           <Button

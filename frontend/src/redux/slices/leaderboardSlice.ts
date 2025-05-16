@@ -33,16 +33,15 @@ const CACHE_DURATION = 5 * 60 * 1000
 
 // Fetch leaderboard data
 export const fetchLeaderboard = createAsyncThunk(
-  "leaderboard/fetchLeaderboard", 
+  "leaderboard/fetchLeaderboard",
   async (_, { rejectWithValue, getState }) => {
     try {
-
       // Check if we have cached data that's still fresh
       const state = getState() as { leaderboard: LeaderboardState }
       const now = Date.now()
-      
+
       if (
-        state.leaderboard.lastFetched && 
+        state.leaderboard.lastFetched &&
         now - state.leaderboard.lastFetched < CACHE_DURATION &&
         state.leaderboard.users.length > 0
       ) {
@@ -50,16 +49,20 @@ export const fetchLeaderboard = createAsyncThunk(
         return {
           users: state.leaderboard.users,
           totalUpvotes: state.leaderboard.totalUpvotes,
-          totalDownvotes: state.leaderboard.totalDownvotes
+          totalDownvotes: state.leaderboard.totalDownvotes,
+          fromCache: true,
         }
       }
 
       const response = await api.get("/users/leaderboard")
-      return response.data
+      return {
+        ...response.data,
+        fromCache: false,
+      }
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || "Failed to fetch leaderboard data")
     }
-  }
+  },
 )
 
 const leaderboardSlice = createSlice({
@@ -74,10 +77,14 @@ const leaderboardSlice = createSlice({
       })
       .addCase(fetchLeaderboard.fulfilled, (state, action) => {
         state.loading = false
-        state.users = action.payload.users
-        state.totalUpvotes = action.payload.totalUpvotes
-        state.totalDownvotes = action.payload.totalDownvotes
-        state.lastFetched = Date.now()
+
+        // Only update state if data is not from cache
+        if (!action.payload.fromCache) {
+          state.users = action.payload.users
+          state.totalUpvotes = action.payload.totalUpvotes
+          state.totalDownvotes = action.payload.totalDownvotes
+          state.lastFetched = Date.now()
+        }
       })
       .addCase(fetchLeaderboard.rejected, (state, action) => {
         state.loading = false

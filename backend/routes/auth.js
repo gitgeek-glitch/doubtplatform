@@ -2,8 +2,16 @@ import express from "express"
 import jwt from "jsonwebtoken"
 import User from "../models/User.js"
 import { auth } from "../middleware/auth.js"
+import { cache } from "../server.js"
 
 const router = express.Router()
+
+// Clear cache when data changes
+const clearCache = (pattern) => {
+  const keys = cache.keys();
+  const matchingKeys = keys.filter(key => key.includes(pattern));
+  matchingKeys.forEach(key => cache.del(key));
+};
 
 // Register a new user
 router.post("/register", async (req, res) => {
@@ -38,8 +46,8 @@ router.post("/register", async (req, res) => {
 
     await user.save()
 
-    // Generate JWT token
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "30d" })
+    // Generate JWT token with longer expiration
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "60d" })
 
     // Return user data without password
     const userData = user.toObject()
@@ -88,8 +96,8 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" })
     }
 
-    // Generate JWT token
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "30d" })
+    // Generate JWT token with longer expiration
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "60d" })
 
     // Return user data without password
     const userData = user.toObject()
@@ -109,15 +117,27 @@ router.post("/login", async (req, res) => {
 // Get current user
 router.get("/me", auth, async (req, res) => {
   try {
+    // Check cache first
+    const cacheKey = `user_${req.user.id}`;
+    const cachedUser = cache.get(cacheKey);
+    
+    if (cachedUser) {
+      return res.json({ user: cachedUser });
+    }
+    
     const user = await User.findById(req.user.id)
       .select("-password")
       .populate("questionsCount")
       .populate("answersCount")
+      .lean()
 
     if (!user) {
       return res.status(404).json({ message: "User not found" })
     }
 
+    // Cache user data for 5 minutes
+    cache.set(cacheKey, user, 300);
+    
     res.json({ user })
   } catch (error) {
     console.error("Error fetching current user:", error)

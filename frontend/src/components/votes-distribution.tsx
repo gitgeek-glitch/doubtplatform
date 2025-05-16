@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { fetchLeaderboard } from "@/redux/slices/leaderboardSlice"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUp, ArrowDown } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
 
 export default function VotesDistribution() {
@@ -38,9 +38,7 @@ export default function VotesDistribution() {
             <Skeleton className="h-[180px] w-[180px] rounded-full" />
           </div>
         ) : error ? (
-          <div className="flex justify-center items-center h-[200px] text-red-500">
-            {error}
-          </div>
+          <div className="flex justify-center items-center h-[200px] text-red-500">{error}</div>
         ) : (
           <>
             <div className="votes-distribution-chart">

@@ -1,21 +1,26 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { fetchLeaderboard } from "@/redux/slices/leaderboardSlice"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Trophy, ArrowUp } from 'lucide-react'
+import { Trophy, ArrowUp } from "lucide-react"
 import { Link } from "react-router-dom"
 
 export default function TopContributors() {
   const dispatch = useAppDispatch()
   const { users, loading } = useAppSelector((state) => state.leaderboard)
+  const fetchAttempted = useRef(false)
 
   useEffect(() => {
-    dispatch(fetchLeaderboard())
-  }, [dispatch])
+    // Only fetch once per component mount and if not already loading
+    if (!fetchAttempted.current && !loading) {
+      fetchAttempted.current = true
+      dispatch(fetchLeaderboard())
+    }
+  }, [dispatch, loading])
 
   return (
     <Card className="top-contributors-card">
