@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import {
   Select,
   SelectContent,
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { X, Eye } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useToast } from "@/hooks/use-toast"
 import MarkdownRenderer from "@/components/markdown-renderer"
 
@@ -37,7 +37,6 @@ export default function AskQuestionPage() {
   })
   
   const [activeTab, setActiveTab] = useState("write")
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   
   // Redirect if not authenticated
   useEffect(() => {
@@ -57,29 +56,11 @@ export default function AskQuestionPage() {
   ) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
-    
-    // Clear validation error when field is edited
-    if (validationErrors[name]) {
-      setValidationErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors[name]
-        return newErrors
-      })
-    }
   }
   
   // Handle category selection
   const handleCategoryChange = (value: string) => {
     setFormData((prev) => ({ ...prev, category: value }))
-    
-    // Clear validation error
-    if (validationErrors.category) {
-      setValidationErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors.category
-        return newErrors
-      })
-    }
   }
   
   // Handle tag input
@@ -136,15 +117,6 @@ export default function AskQuestionPage() {
       tags: [...prev.tags, tag],
       currentTag: "",
     }))
-    
-    // Clear validation error
-    if (validationErrors.tags) {
-      setValidationErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors.tags
-        return newErrors
-      })
-    }
   }
   
   // Remove tag from the list
@@ -181,7 +153,15 @@ export default function AskQuestionPage() {
       errors.tags = "At least one tag is required"
     }
     
-    setValidationErrors(errors)
+    // Show validation errors as toast notifications
+    Object.values(errors).forEach(errorMessage => {
+      toast({
+        title: "Validation Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    })
+    
     return Object.keys(errors).length === 0
   }
   
@@ -222,25 +202,19 @@ export default function AskQuestionPage() {
             id="title"
             name="title"
             placeholder="e.g. How to implement a binary search tree in JavaScript?"
-            className={validationErrors.title ? "auth-input-error" : "ask-question-input"}
+            className="ask-question-input"
             value={formData.title}
             onChange={handleChange}
           />
-          {validationErrors.title ? (
-            <p className="auth-error-message">{validationErrors.title}</p>
-          ) : (
-            <p className="ask-question-hint">
-              Be specific and imagine you're asking a question to another person
-            </p>
-          )}
+          <p className="ask-question-hint">
+            Be specific and imagine you're asking a question to another person
+          </p>
         </div>
         
         <div className="ask-question-field">
           <Label htmlFor="category">Category</Label>
           <Select value={formData.category} onValueChange={handleCategoryChange}>
-            <SelectTrigger
-              className={validationErrors.category ? "auth-input-error" : "ask-question-input"}
-            >
+            <SelectTrigger className="ask-question-input">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
             <SelectContent>
@@ -253,9 +227,6 @@ export default function AskQuestionPage() {
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
-          {validationErrors.category && (
-            <p className="auth-error-message">{validationErrors.category}</p>
-          )}
         </div>
         
         <div className="ask-question-field">
@@ -264,7 +235,7 @@ export default function AskQuestionPage() {
             id="tags"
             name="currentTag"
             placeholder="e.g. javascript, react, algorithms"
-            className={validationErrors.tags ? "auth-input-error" : "ask-question-input"}
+            className="ask-question-input"
             value={formData.currentTag}
             onChange={handleTagInputChange}
             onKeyDown={handleTagKeyDown}
@@ -285,33 +256,21 @@ export default function AskQuestionPage() {
               </Badge>
             ))}
           </div>
-          {validationErrors.tags ? (
-            <p className="auth-error-message">{validationErrors.tags}</p>
-          ) : (
-            <p className="ask-question-hint">
-              Add up to 5 tags to describe what your question is about
-            </p>
-          )}
+          <p className="ask-question-hint">
+            Add up to 5 tags to describe what your question is about
+          </p>
         </div>
         
         <div className="ask-question-field">
           <Label htmlFor="content">Content</Label>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="ask-question-tabs">
-            <TabsList className="ask-question-tabs-list">
-              <TabsTrigger value="write" className={activeTab === "write" ? "ask-question-tab-active" : ""}>
-                Write
-              </TabsTrigger>
-              <TabsTrigger value="preview" className={activeTab === "preview" ? "ask-question-tab-active" : ""}>
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </TabsTrigger>
-            </TabsList>
+            
             <TabsContent value="write">
               <Textarea
                 id="content"
                 name="content"
                 placeholder="Describe your problem in detail. Markdown is supported."
-                className={validationErrors.content ? "auth-input-error" : "ask-question-content"}
+                className="ask-question-content"
                 value={formData.content}
                 onChange={handleChange}
                 rows={15}
@@ -329,13 +288,9 @@ export default function AskQuestionPage() {
               </div>
             </TabsContent>
           </Tabs>
-          {validationErrors.content ? (
-            <p className="auth-error-message">{validationErrors.content}</p>
-          ) : (
-            <p className="ask-question-hint">
-              Include all the information someone would need to answer your question
-            </p>
-          )}
+          <p className="ask-question-hint">
+            Include all the information someone would need to answer your question
+          </p>
         </div>
         
         <Button type="submit" className="ask-question-submit" disabled={loading}>
