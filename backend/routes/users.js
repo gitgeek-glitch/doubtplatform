@@ -7,35 +7,10 @@ import { auth } from "../middleware/auth.js"
 
 const router = express.Router()
 
-// Get leaderboard data
-// Move this route above the /:id routes to prevent "leaderboard" being treated as an ID
+// Get leaderboard data - now based only on answer upvotes
 router.get("/leaderboard", async (req, res) => {
   try {
-    // Aggregate votes to calculate upvotes and downvotes received by each user
-    const questionVotes = await Vote.aggregate([
-      { $match: { question: { $exists: true, $ne: null } } },
-      {
-        $lookup: {
-          from: "questions",
-          localField: "question",
-          foreignField: "_id",
-          as: "questionData",
-        },
-      },
-      { $unwind: "$questionData" },
-      {
-        $group: {
-          _id: "$questionData.author",
-          upvotesReceived: {
-            $sum: { $cond: [{ $eq: ["$value", 1] }, 1, 0] },
-          },
-          downvotesReceived: {
-            $sum: { $cond: [{ $eq: ["$value", -1] }, 1, 0] },
-          },
-        },
-      },
-    ])
-
+    // Only aggregate votes on answers
     const answerVotes = await Vote.aggregate([
       { $match: { answer: { $exists: true, $ne: null } } },
       {
@@ -60,46 +35,19 @@ router.get("/leaderboard", async (req, res) => {
       },
     ])
 
-    // Combine question and answer votes
-    const votesByUser = new Map()
+    // Convert to array for easier processing
+    const votesArray = answerVotes.map(item => ({
+      _id: item._id,
+      upvotesReceived: item.upvotesReceived,
+      downvotesReceived: item.downvotesReceived
+    }))
 
-    // Process question votes
-    questionVotes.forEach((item) => {
-      votesByUser.set(item._id.toString(), {
-        _id: item._id,
-        upvotesReceived: item.upvotesReceived,
-        downvotesReceived: item.downvotesReceived,
-      })
-    })
-
-    // Process answer votes
-    answerVotes.forEach((item) => {
-      const userId = item._id.toString()
-      if (votesByUser.has(userId)) {
-        const existing = votesByUser.get(userId)
-        votesByUser.set(userId, {
-          _id: item._id,
-          upvotesReceived: existing.upvotesReceived + item.upvotesReceived,
-          downvotesReceived: existing.downvotesReceived + item.downvotesReceived,
-        })
-      } else {
-        votesByUser.set(userId, {
-          _id: item._id,
-          upvotesReceived: item.upvotesReceived,
-          downvotesReceived: item.downvotesReceived,
-        })
-      }
-    })
-
-    // Convert Map to array
-    const votesArray = Array.from(votesByUser.values())
-
-    // Sort by total upvotes received
+    // Sort by upvotes received on answers
     votesArray.sort((a, b) => b.upvotesReceived - a.upvotesReceived)
 
     // Get user details for top users
     const userIds = votesArray.slice(0, 10).map((item) => item._id)
-    const users = await User.find({ _id: { $in: userIds } }).select("name avatar reputation")
+    const users = await User.find({ _id: { $in: userIds } }).select("name avatar reputation answerUpvotesReceived answerDownvotesReceived role")
 
     // Combine user details with vote data
     const leaderboardUsers = users.map((user) => {
@@ -109,6 +57,7 @@ router.get("/leaderboard", async (req, res) => {
         name: user.name,
         avatar: user.avatar,
         reputation: user.reputation,
+        role: user.role,
         upvotesReceived: voteData?.upvotesReceived || 0,
         downvotesReceived: voteData?.downvotesReceived || 0,
       }
@@ -149,6 +98,97 @@ router.get("/:id", async (req, res) => {
   }
 })
 
+// Get user votes distribution
+router.get("/:id/votes-distribution", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" })
+    }
+    
+    // Return the user's vote distribution data
+    res.json({
+      answerUpvotes: user.answerUpvotesReceived || 0,
+      answerDownvotes: user.answerDownvotesReceived || 0,
+      questionUpvotes: user.questionUpvotesReceived || 0,
+      questionDownvotes: user.questionDownvotesReceived || 0
+    })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Update user votes counts (internal, not exposed as API endpoint)
+export const updateUserVoteCounts = async (userId) => {
+  try {
+    // Count upvotes and downvotes for questions
+    const questionVotes = await Vote.aggregate([
+      { 
+        $lookup: {
+          from: "questions",
+          localField: "question",
+          foreignField: "_id",
+          as: "questionData"
+        }
+      },
+      { $unwind: "$questionData" },
+      { $match: { "questionData.author": mongoose.Types.ObjectId(userId) } },
+      {
+        $group: {
+          _id: null,
+          upvotes: { $sum: { $cond: [{ $eq: ["$value", 1] }, 1, 0] } },
+          downvotes: { $sum: { $cond: [{ $eq: ["$value", -1] }, 1, 0] } }
+        }
+      }
+    ])
+
+    // Count upvotes and downvotes for answers
+    const answerVotes = await Vote.aggregate([
+      { 
+        $lookup: {
+          from: "answers",
+          localField: "answer",
+          foreignField: "_id",
+          as: "answerData"
+        }
+      },
+      { $unwind: "$answerData" },
+      { $match: { "answerData.author": mongoose.Types.ObjectId(userId) } },
+      {
+        $group: {
+          _id: null,
+          upvotes: { $sum: { $cond: [{ $eq: ["$value", 1] }, 1, 0] } },
+          downvotes: { $sum: { $cond: [{ $eq: ["$value", -1] }, 1, 0] } }
+        }
+      }
+    ])
+
+    // Update user
+    const questionUpvotes = questionVotes.length > 0 ? questionVotes[0].upvotes : 0
+    const questionDownvotes = questionVotes.length > 0 ? questionVotes[0].downvotes : 0
+    const answerUpvotes = answerVotes.length > 0 ? answerVotes[0].upvotes : 0
+    const answerDownvotes = answerVotes.length > 0 ? answerVotes[0].downvotes : 0
+
+    await User.findByIdAndUpdate(userId, {
+      questionUpvotesReceived: questionUpvotes,
+      questionDownvotesReceived: questionDownvotes,
+      answerUpvotesReceived: answerUpvotes,
+      answerDownvotesReceived: answerDownvotes
+    })
+
+    return {
+      questionUpvotes,
+      questionDownvotes,
+      answerUpvotes,
+      answerDownvotes
+    }
+  } catch (error) {
+    console.error("Error updating user vote counts:", error)
+    throw error
+  }
+}
+
 // Update user profile
 router.put("/profile", auth, async (req, res) => {
   try {
@@ -180,7 +220,7 @@ router.get("/:id/questions", async (req, res) => {
   try {
     const questions = await Question.find({ author: req.params.id })
       .sort({ createdAt: -1 })
-      .populate("author", "name avatar")
+      .populate("author", "name avatar role")
       .populate("answerCount")
 
     res.json(questions)
@@ -194,7 +234,7 @@ router.get("/:id/answers", async (req, res) => {
   try {
     const answers = await Answer.find({ author: req.params.id })
       .sort({ createdAt: -1 })
-      .populate("author", "name avatar")
+      .populate("author", "name avatar role")
       .populate({
         path: "question",
         select: "title _id",
@@ -248,7 +288,7 @@ router.get("/saved-questions", auth, async (req, res) => {
       path: "savedQuestions",
       populate: {
         path: "author",
-        select: "name avatar",
+        select: "name avatar role",
       },
     })
 

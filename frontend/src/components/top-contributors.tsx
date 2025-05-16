@@ -6,6 +6,7 @@ import { fetchLeaderboard } from "@/redux/slices/leaderboardSlice"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Badge } from "@/components/ui/badge"
 import { Trophy, ArrowUp } from "lucide-react"
 import { Link } from "react-router-dom"
 
@@ -22,12 +23,27 @@ export default function TopContributors() {
     }
   }, [dispatch, loading])
 
+  // Helper function to get role badge color
+  const getRoleBadgeColor = (role: string): string => {
+    switch (role) {
+      case "Master":
+        return "bg-amber-500 hover:bg-amber-600";
+      case "Expert":
+        return "bg-blue-500 hover:bg-blue-600";
+      case "Intermediate":
+        return "bg-green-500 hover:bg-green-600";
+      case "Newbie":
+      default:
+        return "bg-gray-500 hover:bg-gray-600";
+    }
+  }
+
   return (
     <Card className="top-contributors-card">
       <CardHeader className="top-contributors-header">
         <CardTitle className="top-contributors-title">
           <Trophy className="top-contributors-icon" />
-          Top Contributors
+          Top Answer Contributors
         </CardTitle>
       </CardHeader>
       <CardContent className="top-contributors-content">
@@ -69,7 +85,9 @@ export default function TopContributors() {
                       <ArrowUp className="top-contributors-vote-icon" />
                       {user.upvotesReceived}
                     </span>
-                    <span className="top-contributors-reputation">{user.reputation} rep</span>
+                    <Badge className={getRoleBadgeColor(user.role)}>
+                      {user.role}
+                    </Badge>
                   </div>
                 </div>
               </Link>

@@ -14,8 +14,8 @@ interface Question {
   title: string
   content: string
   tags: string[]
-  upvotes: number
-  downvotes: number
+  // upvotes: number
+  // downvotes: number
   answerCount: number
   viewCount?: number
   author: Author
@@ -419,22 +419,22 @@ const questionsSlice = createSlice({
       })
 
       // Vote on question
-      .addCase(voteQuestion.fulfilled, (state, action) => {
-        const { value } = action.payload
-        const question = state.currentQuestion
+      // .addCase(voteQuestion.fulfilled, (state, action) => {
+      //   const { value } = action.payload
+      //   const question = state.currentQuestion
 
-        if (question) {
-          // Remove previous vote if any
-          if (state.questionVote === 1) question.upvotes--
-          if (state.questionVote === -1) question.downvotes--
+      //   if (question) {
+      //     // Remove previous vote if any
+      //     if (state.questionVote === 1) question.upvotes--
+      //     if (state.questionVote === -1) question.downvotes--
 
-          // Add new vote if not removing
-          if (value === 1) question.upvotes++
-          if (value === -1) question.downvotes++
+      //     // Add new vote if not removing
+      //     if (value === 1) question.upvotes++
+      //     if (value === -1) question.downvotes++
 
-          state.questionVote = value
-        }
-      })
+      //     state.questionVote = value
+      //   }
+      // })
 
       // Vote on answer
       .addCase(voteAnswer.fulfilled, (state, action) => {

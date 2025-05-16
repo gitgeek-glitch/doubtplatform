@@ -12,6 +12,11 @@ interface User {
   questionsCount: number
   answersCount: number
   badges: string[]
+  role: string
+  answerUpvotesReceived: number
+  answerDownvotesReceived: number
+  questionUpvotesReceived: number
+  questionDownvotesReceived: number
   createdAt: string
 }
 
@@ -29,6 +34,7 @@ interface Question {
     _id: string
     name: string
     avatar?: string
+    role: string
   }
 }
 
@@ -43,6 +49,7 @@ interface Answer {
     _id: string
     name: string
     avatar?: string
+    role: string
   }
   question: {
     _id: string
@@ -50,11 +57,20 @@ interface Answer {
   }
 }
 
+interface UserVotesDistribution {
+  answerUpvotes: number
+  answerDownvotes: number
+  questionUpvotes: number
+  questionDownvotes: number
+}
+
 interface UsersState {
   currentProfile: User | null
   userQuestions: Question[]
   userAnswers: Answer[]
+  userVotesDistribution: UserVotesDistribution | null
   loading: boolean
+  votesLoading: boolean
   error: string | null
 }
 
@@ -62,20 +78,25 @@ const initialState: UsersState = {
   currentProfile: null,
   userQuestions: [],
   userAnswers: [],
+  userVotesDistribution: null,
   loading: false,
+  votesLoading: false,
   error: null
 }
 
 // Async thunks
 export const fetchUserProfile = createAsyncThunk(
   'users/fetchUserProfile',
-  async (userId: string, { rejectWithValue }) => {
+  async (userId: string, { rejectWithValue, dispatch }) => {
     try {
       const [userRes, questionsRes, answersRes] = await Promise.all([
         api.get(`/users/${userId}`),
         api.get(`/users/${userId}/questions`),
         api.get(`/users/${userId}/answers`)
       ])
+
+      // Also fetch the user's vote distribution
+      dispatch(fetchUserVotesDistribution(userId))
 
       return {
         user: userRes.data,
@@ -84,6 +105,19 @@ export const fetchUserProfile = createAsyncThunk(
       }
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch user profile')
+    }
+  }
+)
+
+// Fetch user's votes distribution
+export const fetchUserVotesDistribution = createAsyncThunk(
+  'users/fetchUserVotesDistribution',
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/users/${userId}/votes-distribution`)
+      return response.data
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch user votes')
     }
   }
 )
@@ -97,6 +131,7 @@ const usersSlice = createSlice({
       state.currentProfile = null
       state.userQuestions = []
       state.userAnswers = []
+      state.userVotesDistribution = null
       state.error = null
     }
   },
@@ -116,6 +151,17 @@ const usersSlice = createSlice({
       .addCase(fetchUserProfile.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
+      })
+      // Fetch user votes distribution
+      .addCase(fetchUserVotesDistribution.pending, (state) => {
+        state.votesLoading = true
+      })
+      .addCase(fetchUserVotesDistribution.fulfilled, (state, action) => {
+        state.votesLoading = false
+        state.userVotesDistribution = action.payload
+      })
+      .addCase(fetchUserVotesDistribution.rejected, (state) => {
+        state.votesLoading = false
       })
   }
 })

@@ -234,79 +234,79 @@ router.delete("/:id", auth, async (req, res) => {
 })
 
 // Vote on a question
-router.post("/:id/vote", auth, async (req, res) => {
-  try {
-    const { value } = req.body
+// router.post("/:id/vote", auth, async (req, res) => {
+//   try {
+//     const { value } = req.body
 
-    if (![1, 0, -1].includes(value)) {
-      return res.status(400).json({ message: "Invalid vote value" })
-    }
+//     if (![1, 0, -1].includes(value)) {
+//       return res.status(400).json({ message: "Invalid vote value" })
+//     }
 
-    const question = await Question.findById(req.params.id)
-    if (!question) {
-      return res.status(404).json({ message: "Question not found" })
-    }
+//     const question = await Question.findById(req.params.id)
+//     if (!question) {
+//       return res.status(404).json({ message: "Question not found" })
+//     }
 
-    // Check if user is voting on their own question
-    if (question.author.toString() === req.user.id) {
-      return res.status(400).json({ message: "Cannot vote on your own question" })
-    }
+//     // Check if user is voting on their own question
+//     if (question.author.toString() === req.user.id) {
+//       return res.status(400).json({ message: "Cannot vote on your own question" })
+//     }
 
-    // Find existing vote
-    let vote = await Vote.findOne({
-      user: req.user.id,
-      question: req.params.id,
-    })
+//     // Find existing vote
+//     let vote = await Vote.findOne({
+//       user: req.user.id,
+//       question: req.params.id,
+//     })
 
-    if (vote) {
-      // Update existing vote
-      const oldValue = vote.value
-      vote.value = value
-      await vote.save()
+//     if (vote) {
+//       // Update existing vote
+//       const oldValue = vote.value
+//       vote.value = value
+//       await vote.save()
 
-      // Update question vote counts
-      if (oldValue === 1 && value !== 1) question.upvotes -= 1
-      if (oldValue === -1 && value !== -1) question.downvotes -= 1
-      if (value === 1 && oldValue !== 1) question.upvotes += 1
-      if (value === -1 && oldValue !== -1) question.downvotes += 1
-    } else {
-      // Create new vote
-      vote = new Vote({
-        user: req.user.id,
-        question: req.params.id,
-        value,
-      })
-      await vote.save()
+//       // Update question vote counts
+//       if (oldValue === 1 && value !== 1) question.upvotes -= 1
+//       if (oldValue === -1 && value !== -1) question.downvotes -= 1
+//       if (value === 1 && oldValue !== 1) question.upvotes += 1
+//       if (value === -1 && oldValue !== -1) question.downvotes += 1
+//     } else {
+//       // Create new vote
+//       vote = new Vote({
+//         user: req.user.id,
+//         question: req.params.id,
+//         value,
+//       })
+//       await vote.save()
 
-      // Update question vote counts
-      if (value === 1) question.upvotes += 1
-      if (value === -1) question.downvotes += 1
-    }
+//       // Update question vote counts
+//       if (value === 1) question.upvotes += 1
+//       if (value === -1) question.downvotes += 1
+//     }
 
-    await question.save()
+//     await question.save()
 
-    // Update author reputation in the background
-    User.findById(question.author).then(author => {
-      if (author) {
-        // Calculate reputation change
-        let repChange = 0
-        if (vote.value === 1) repChange = 5
-        else if (vote.value === -1) repChange = -2
+//     // Update author reputation in the background
+//     User.findById(question.author).then(author => {
+//       if (author) {
+//         // Calculate reputation change
+//         let repChange = 0
+//         if (vote.value === 1) repChange = 5
+//         else if (vote.value === -1) repChange = -2
 
-        author.reputation += repChange
-        return author.save()
-      }
-    }).catch(err => console.error("Error updating reputation:", err));
+//         author.reputation += repChange
+//         return author.save()
+//       }
+//     }).catch(err => console.error("Error updating reputation:", err));
 
-    // Clear related caches
-    clearCache(`/api/questions/${req.params.id}`);
+//     // Clear related caches
+//     clearCache(`/api/questions/${req.params.id}`);
 
-    res.json({ vote, question })
-  } catch (error) {
-    console.error("Error voting on question:", error);
-    res.status(500).json({ message: error.message })
-  }
-})
+//     res.json({ vote, question })
+//   } catch (error) {
+//     console.error("Error voting on question:", error);
+//     res.status(500).json({ message: error.message })
+//   }
+// })
 
 // Get answers for a question
 router.get("/:id/answers", cacheMiddleware(60), async (req, res) => {

@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import {
   fetchQuestionDetails,
   fetchVotes,
-  voteQuestion,
+  // voteQuestion,
   voteAnswer,
   acceptAnswer,
   submitAnswer,
@@ -39,7 +39,7 @@ export default function QuestionDetailPage() {
     answers,
     relatedQuestions,
     loading,
-    questionVote,
+    // questionVote,
     answerVotes,
   } = useAppSelector((state) => state.questions)
   const [answerContent, setAnswerContent] = useState("")
@@ -175,30 +175,30 @@ const fetchQuestionWithDetails = useCallback(
   }, 500)
 
   // Handle question vote
-  const handleQuestionVote = async (value: number) => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to vote",
-        variant: "destructive",
-      })
-      return
-    }
+  // const handleQuestionVote = async (value: number) => {
+  //   if (!isAuthenticated) {
+  //     toast({
+  //       title: "Authentication required",
+  //       description: "Please sign in to vote",
+  //       variant: "destructive",
+  //     })
+  //     return
+  //   }
 
-    if (!id) return
+  //   if (!id) return
 
-    try {
-      // If user already voted the same way, remove the vote
-      const finalValue = questionVote === value ? 0 : value
-      await dispatch(voteQuestion({ questionId: id, value: finalValue })).unwrap()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to register your vote",
-        variant: "destructive",
-      })
-    }
-  }
+  //   try {
+  //     // If user already voted the same way, remove the vote
+  //     const finalValue = questionVote === value ? 0 : value
+  //     await dispatch(voteQuestion({ questionId: id, value: finalValue })).unwrap()
+  //   } catch (error) {
+  //     toast({
+  //       title: "Error",
+  //       description: "Failed to register your vote",
+  //       variant: "destructive",
+  //     })
+  //   }
+  // }
 
   // Handle answer vote
   const handleAnswerVote = async (answerId: string, value: number) => {
@@ -528,7 +528,7 @@ const handleSubmitAnswer = async (e: React.FormEvent) => {
           </div>
 
           <div className="flex gap-6">
-            <div className="question-detail-vote-container">
+            {/* <div className="question-detail-vote-container">
               <Button
                 variant="ghost"
                 size="icon"
@@ -546,7 +546,7 @@ const handleSubmitAnswer = async (e: React.FormEvent) => {
               >
                 <ArrowDown className="h-6 w-6" />
               </Button>
-            </div>
+            </div> */}
 
             <div className="question-detail-content">
               <div className="prose prose-invert max-w-none">
@@ -734,9 +734,9 @@ const handleSubmitAnswer = async (e: React.FormEvent) => {
                     {q.title}
                   </Link>
                   <div className="question-detail-related-meta">
-                    <Badge variant="outline" className="text-xs">
+                    {/* <Badge variant="outline" className="text-xs">
                       {q.upvotes - q.downvotes} votes
-                    </Badge>
+                    </Badge> */}
                     <span className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(q.createdAt), { addSuffix: true })}
                     </span>

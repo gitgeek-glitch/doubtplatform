@@ -1,6 +1,14 @@
 import mongoose from "mongoose"
 import bcrypt from "bcryptjs"
 
+// Define user role thresholds
+export const USER_ROLES = {
+  NEWBIE: "Newbie",       // 0-99 answer upvotes
+  INTERMEDIATE: "Intermediate", // 100-499 answer upvotes
+  EXPERT: "Expert",       // 500-999 answer upvotes
+  MASTER: "Master"        // 1000+ answer upvotes
+}
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -33,6 +41,27 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    answerUpvotesReceived: {
+      type: Number,
+      default: 0,
+    },
+    answerDownvotesReceived: {
+      type: Number,
+      default: 0,
+    },
+    questionUpvotesReceived: {
+      type: Number,
+      default: 0,
+    },
+    questionDownvotesReceived: {
+      type: Number,
+      default: 0,
+    },
+    role: {
+      type: String,
+      enum: Object.values(USER_ROLES),
+      default: USER_ROLES.NEWBIE,
+    },
     badges: {
       type: [String],
       default: [],
@@ -64,6 +93,26 @@ userSchema.pre("save", async function (next) {
   } catch (error) {
     next(error)
   }
+})
+
+// Update user role based on answer upvotes
+userSchema.pre("save", function (next) {
+  // Only update role if answerUpvotesReceived has changed
+  if (!this.isModified("answerUpvotesReceived")) return next()
+  
+  const upvotes = this.answerUpvotesReceived;
+  
+  if (upvotes >= 1000) {
+    this.role = USER_ROLES.MASTER;
+  } else if (upvotes >= 500) {
+    this.role = USER_ROLES.EXPERT;
+  } else if (upvotes >= 100) {
+    this.role = USER_ROLES.INTERMEDIATE;
+  } else {
+    this.role = USER_ROLES.NEWBIE;
+  }
+  
+  next()
 })
 
 // Method to compare passwords

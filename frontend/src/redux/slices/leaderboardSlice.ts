@@ -8,6 +8,7 @@ interface LeaderboardUser {
   upvotesReceived: number
   downvotesReceived: number
   reputation: number
+  role: string
 }
 
 interface LeaderboardState {
@@ -31,7 +32,7 @@ const initialState: LeaderboardState = {
 // Cache duration in milliseconds (5 minutes)
 const CACHE_DURATION = 5 * 60 * 1000
 
-// Fetch leaderboard data
+// Fetch leaderboard data - now focused on answer upvotes only
 export const fetchLeaderboard = createAsyncThunk(
   "leaderboard/fetchLeaderboard",
   async (_, { rejectWithValue, getState }) => {
@@ -63,6 +64,19 @@ export const fetchLeaderboard = createAsyncThunk(
       return rejectWithValue(error.response?.data?.message || "Failed to fetch leaderboard data")
     }
   },
+)
+
+// Fetch user votes distribution
+export const fetchUserVotesDistribution = createAsyncThunk(
+  "leaderboard/fetchUserVotesDistribution",
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/users/${userId}/votes-distribution`)
+      return response.data
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch user votes distribution")
+    }
+  }
 )
 
 const leaderboardSlice = createSlice({
