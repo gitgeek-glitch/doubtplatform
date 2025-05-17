@@ -130,6 +130,7 @@ export const fetchQuestions = createAsyncThunk<
       ...(category !== "all" && { category }),
       ...(search && { search }),
       ...(tag && { tag }),
+      ...(filter === "unanswered" && { unanswered: "true" }),
     })
 
     const response = await api.get(`/questions?${queryParams}`)

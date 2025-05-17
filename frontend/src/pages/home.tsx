@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MessageSquare, Clock, TrendingUp, PlusCircle, RefreshCw } from "lucide-react"
+import { MessageSquare, Clock, PlusCircle, RefreshCw } from "lucide-react"
 import QuestionCard from "@/components/question-card"
 import TopContributors from "@/components/top-contributors"
 import VotesDistribution from "@/components/votes-distribution"
@@ -202,7 +202,7 @@ export default function HomePage() {
           <p className="home-subtitle">Discover and solve interesting problems from your peers</p>
         </div>
 
-        <div className="home-filters">
+        <div className="home-filters flex items-center justify-between gap-4 flex-wrap">
           <Select value={category} onValueChange={handleCategoryChange}>
             <SelectTrigger className="home-category-select">
               <SelectValue placeholder="Select category" />
@@ -217,16 +217,12 @@ export default function HomePage() {
           </Select>
 
           <Tabs defaultValue="latest" className="home-tabs" value={filter} onValueChange={handleFilterChange}>
-            <TabsList className="home-tabs-list">
-              <TabsTrigger value="latest" className={cn(filter === "latest" && "home-tab-active")}>
+            <TabsList className="home-tabs-list transition-all duration-200">
+              <TabsTrigger value="latest" className={cn("px-4", filter === "latest" && "home-tab-active")}>
                 <Clock className="h-4 w-4 mr-2" />
                 Latest
               </TabsTrigger>
-              <TabsTrigger value="trending" className={cn(filter === "trending" && "home-tab-active")}>
-                <TrendingUp className="h-4 w-4 mr-2" />
-                Hot
-              </TabsTrigger>
-              <TabsTrigger value="unanswered" className={cn(filter === "unanswered" && "home-tab-active")}>
+              <TabsTrigger value="unanswered" className={cn("px-4", filter === "unanswered" && "home-tab-active")}>
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Unanswered
               </TabsTrigger>
@@ -238,7 +234,7 @@ export default function HomePage() {
               onClick={handleRefresh}
               variant="outline"
               size="icon"
-              className="h-10 w-10"
+              className="h-10 w-10 flex items-center justify-center"
               title="Refresh questions"
               disabled={refreshing}
             >
@@ -299,11 +295,13 @@ export default function HomePage() {
             <div className="home-empty-state" data-scroll data-scroll-speed="0.1">
               <h3 className="home-empty-title">No questions found</h3>
               <p className="home-empty-message">
-                {searchParams.search || searchParams.tag
-                  ? "Try a different search term or tag"
-                  : "Be the first to ask a question!"}
+                {filter === "unanswered"
+                  ? "All questions have been answered, ask yours..."
+                  : searchParams.search || searchParams.tag
+                    ? "Try a different search term or tag"
+                    : "Be the first to ask a question!"}
               </p>
-              <Button onClick={() => navigate("/ask")} className="ask-question-submit">
+              <Button onClick={() => navigate("/ask")} className="ask-question-submit mt-4">
                 Ask a Question
               </Button>
             </div>

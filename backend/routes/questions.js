@@ -9,56 +9,59 @@ import { cache } from "../server.js"
 const router = express.Router()
 
 // Cache middleware for read operations
-const cacheMiddleware = (duration = 300) => (req, res, next) => {
-  // Skip cache for authenticated requests or non-GET requests
-  if (req.method !== 'GET' || req.headers.authorization) {
-    return next();
+const cacheMiddleware =
+  (duration = 300) =>
+  (req, res, next) => {
+    // Skip cache for authenticated requests or non-GET requests
+    if (req.method !== "GET" || req.headers.authorization) {
+      return next()
+    }
+
+    const key = `__express__${req.originalUrl || req.url}`
+    const cachedBody = cache.get(key)
+
+    if (cachedBody) {
+      return res.json(cachedBody)
+    } else {
+      const originalJson = res.json
+      res.json = function (body) {
+        cache.set(key, body, duration)
+        originalJson.call(this, body)
+      }
+      next()
+    }
   }
-  
-  const key = `__express__${req.originalUrl || req.url}`;
-  const cachedBody = cache.get(key);
-  
-  if (cachedBody) {
-    return res.json(cachedBody);
-  } else {
-    const originalJson = res.json;
-    res.json = function(body) {
-      cache.set(key, body, duration);
-      originalJson.call(this, body);
-    };
-    next();
-  }
-};
 
 // Clear cache when data changes
 const clearCache = (pattern) => {
-  const keys = cache.keys();
-  const matchingKeys = keys.filter(key => key.includes(pattern));
-  matchingKeys.forEach(key => cache.del(key));
-};
+  const keys = cache.keys()
+  const matchingKeys = keys.filter((key) => key.includes(pattern))
+  matchingKeys.forEach((key) => cache.del(key))
+}
 
 // Get all questions with filtering and pagination
 router.get("/", cacheMiddleware(60), async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1
-    const limit = parseInt(req.query.limit) || 10
+    const page = Number.parseInt(req.query.page) || 1
+    const limit = Number.parseInt(req.query.limit) || 10
     const sort = req.query.sort || "latest"
     const category = req.query.category
     const search = req.query.search
     const tag = req.query.tag
+    const unanswered = req.query.unanswered === "true"
 
-    let query = {}
+    const query = {}
     if (category && category !== "all") {
       query.category = category
     }
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { content: { $regex: search, $options: "i" } },
-      ]
+      query.$or = [{ title: { $regex: search, $options: "i" } }, { content: { $regex: search, $options: "i" } }]
     }
     if (tag) {
       query.tags = tag
+    }
+    if (unanswered) {
+      query.answerCount = 0
     }
 
     // Sort configuration
@@ -69,6 +72,9 @@ router.get("/", cacheMiddleware(60), async (req, res) => {
         break
       case "popular":
         sortConfig = { upvotes: -1 }
+        break
+      case "unanswered":
+        sortConfig = { createdAt: -1 }
         break
       default:
         sortConfig = { createdAt: -1 }
@@ -83,12 +89,12 @@ router.get("/", cacheMiddleware(60), async (req, res) => {
       .lean()
 
     // Get total count for pagination info (cached separately)
-    const cacheKey = `count_${JSON.stringify(query)}`;
-    let totalCount = cache.get(cacheKey);
-    
+    const cacheKey = `count_${JSON.stringify(query)}`
+    let totalCount = cache.get(cacheKey)
+
     if (totalCount === undefined) {
-      totalCount = await Question.countDocuments(query);
-      cache.set(cacheKey, totalCount, 300); // Cache for 5 minutes
+      totalCount = await Question.countDocuments(query)
+      cache.set(cacheKey, totalCount, 300) // Cache for 5 minutes
     }
 
     res.json({
@@ -96,10 +102,10 @@ router.get("/", cacheMiddleware(60), async (req, res) => {
       hasMore: questions.length === limit,
       totalCount,
       totalPages: Math.ceil(totalCount / limit),
-      currentPage: page
+      currentPage: page,
     })
   } catch (error) {
-    console.error("Error fetching questions:", error);
+    console.error("Error fetching questions:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -117,16 +123,13 @@ router.get("/:id", cacheMiddleware(60), async (req, res) => {
     }
 
     // Update view count in the background without waiting
-    Question.findByIdAndUpdate(
-      req.params.id, 
-      { $inc: { viewCount: 1 } },
-      { new: false }
-    ).exec()
-    .catch(err => console.error("Error updating view count:", err));
+    Question.findByIdAndUpdate(req.params.id, { $inc: { viewCount: 1 } }, { new: false })
+      .exec()
+      .catch((err) => console.error("Error updating view count:", err))
 
     res.json(question)
   } catch (error) {
-    console.error("Error fetching question:", error);
+    console.error("Error fetching question:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -150,11 +153,11 @@ router.post("/", auth, async (req, res) => {
     await question.populate("author", "name avatar")
 
     // Clear cache for questions list
-    clearCache('/api/questions');
+    clearCache("/api/questions")
 
     res.status(201).json(question)
   } catch (error) {
-    console.error("Error creating question:", error);
+    console.error("Error creating question:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -187,12 +190,12 @@ router.put("/:id", auth, async (req, res) => {
     await question.populate("author", "name avatar")
 
     // Clear related caches
-    clearCache(`/api/questions/${req.params.id}`);
-    clearCache('/api/questions');
+    clearCache(`/api/questions/${req.params.id}`)
+    clearCache("/api/questions")
 
     res.json(question)
   } catch (error) {
-    console.error("Error updating question:", error);
+    console.error("Error updating question:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -219,16 +222,16 @@ router.delete("/:id", auth, async (req, res) => {
       // Delete all votes for this question
       Vote.deleteMany({ question: req.params.id }),
       // Delete the question
-      question.deleteOne()
-    ]);
+      question.deleteOne(),
+    ])
 
     // Clear related caches
-    clearCache(`/api/questions/${req.params.id}`);
-    clearCache('/api/questions');
+    clearCache(`/api/questions/${req.params.id}`)
+    clearCache("/api/questions")
 
     res.json({ message: "Question deleted successfully" })
   } catch (error) {
-    console.error("Error deleting question:", error);
+    console.error("Error deleting question:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -318,7 +321,7 @@ router.get("/:id/answers", cacheMiddleware(60), async (req, res) => {
 
     res.json(answers)
   } catch (error) {
-    console.error("Error fetching answers:", error);
+    console.error("Error fetching answers:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -345,11 +348,11 @@ router.post("/:id/answers", auth, async (req, res) => {
     await answer.populate("author", "name avatar reputation")
 
     // Clear related caches
-    clearCache(`/api/questions/${req.params.id}/answers`);
+    clearCache(`/api/questions/${req.params.id}/answers`)
 
     res.status(201).json(answer)
   } catch (error) {
-    console.error("Error creating answer:", error);
+    console.error("Error creating answer:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -365,16 +368,16 @@ router.get("/:id/votes", auth, async (req, res) => {
         question: req.params.id,
       }),
       // Get answers
-      Answer.find({ question: req.params.id }).select('_id')
-    ]);
+      Answer.find({ question: req.params.id }).select("_id"),
+    ])
 
-    const answerIds = answers.map(answer => answer._id);
+    const answerIds = answers.map((answer) => answer._id)
 
     // Get answer votes
     const answerVotes = await Vote.find({
       user: req.user.id,
       answer: { $in: answerIds },
-    });
+    })
 
     res.json({
       questionVote: questionVote ? questionVote.value : 0,
@@ -384,7 +387,7 @@ router.get("/:id/votes", auth, async (req, res) => {
       })),
     })
   } catch (error) {
-    console.error("Error fetching votes:", error);
+    console.error("Error fetching votes:", error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -392,7 +395,7 @@ router.get("/:id/votes", auth, async (req, res) => {
 // Get related questions
 router.get("/:id/related", cacheMiddleware(300), async (req, res) => {
   try {
-    const question = await Question.findById(req.params.id).select('tags category');
+    const question = await Question.findById(req.params.id).select("tags category")
     if (!question) {
       return res.status(404).json({ message: "Question not found" })
     }
@@ -409,7 +412,7 @@ router.get("/:id/related", cacheMiddleware(300), async (req, res) => {
 
     res.json(relatedQuestions)
   } catch (error) {
-    console.error("Error fetching related questions:", error);
+    console.error("Error fetching related questions:", error)
     res.status(500).json({ message: error.message })
   }
 })

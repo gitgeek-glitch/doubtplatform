@@ -971,7 +971,7 @@
   }
 
   .home-tabs-list {
-    @apply grid grid-cols-3 w-full sm:w-[300px] bg-gray-900;
+    @apply grid grid-cols-2 w-full sm:w-[300px] bg-gray-900;
   }
 
   .home-tab-active {
