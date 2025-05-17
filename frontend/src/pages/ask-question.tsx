@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
@@ -10,21 +12,19 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { X } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import MarkdownRenderer from "@/components/markdown-renderer"
 
+// Import the useContentModeration hook at the top of the file
+import { useContentModeration } from "@/hooks/use-content-moderation"
+import { GeminiApiKeyPrompt } from "@/components/gemini-key-prompt"
+
 export default function AskQuestionPage() {
   const dispatch = useAppDispatch()
-  const { isAuthenticated } = useAppSelector(state => state.auth)
-  const { loading } = useAppSelector(state => state.questions)
+  const { isAuthenticated } = useAppSelector((state) => state.auth)
+  const { loading } = useAppSelector((state) => state.questions)
   const navigate = useNavigate()
   const { toast } = useToast()
   
@@ -35,9 +35,12 @@ export default function AskQuestionPage() {
     tags: [] as string[],
     currentTag: "",
   })
-  
+
   const [activeTab, setActiveTab] = useState("write")
   
+  // Get content moderation hook
+  const { checkContent, isChecking } = useContentModeration()
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
@@ -49,25 +52,23 @@ export default function AskQuestionPage() {
       navigate("/auth")
     }
   }, [isAuthenticated, navigate, toast])
-  
+
   // Handle form input changes
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
-  
+
   // Handle category selection
   const handleCategoryChange = (value: string) => {
     setFormData((prev) => ({ ...prev, category: value }))
   }
-  
+
   // Handle tag input
   const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, currentTag: e.target.value }))
   }
-  
+
   // Add tag when Enter is pressed
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -75,13 +76,13 @@ export default function AskQuestionPage() {
       addTag()
     }
   }
-  
+
   // Add tag to the list
   const addTag = () => {
     const tag = formData.currentTag.trim().toLowerCase()
-    
+
     if (!tag) return
-    
+
     // Validate tag
     if (tag.length > 20) {
       toast({
@@ -91,7 +92,7 @@ export default function AskQuestionPage() {
       })
       return
     }
-    
+
     // Check if tag already exists
     if (formData.tags.includes(tag)) {
       toast({
@@ -101,7 +102,7 @@ export default function AskQuestionPage() {
       })
       return
     }
-    
+
     // Limit number of tags
     if (formData.tags.length >= 5) {
       toast({
@@ -111,14 +112,14 @@ export default function AskQuestionPage() {
       })
       return
     }
-    
+
     setFormData((prev) => ({
       ...prev,
       tags: [...prev.tags, tag],
       currentTag: "",
     }))
   }
-  
+
   // Remove tag from the list
   const removeTag = (tagToRemove: string) => {
     setFormData((prev) => ({
@@ -126,11 +127,11 @@ export default function AskQuestionPage() {
       tags: prev.tags.filter((tag) => tag !== tagToRemove),
     }))
   }
-  
+
   // Validate form before submission
   const validateForm = () => {
     const errors: Record<string, string> = {}
-    
+
     if (!formData.title.trim()) {
       errors.title = "Title is required"
     } else if (formData.title.length < 10) {
@@ -138,47 +139,56 @@ export default function AskQuestionPage() {
     } else if (formData.title.length > 150) {
       errors.title = "Title must be less than 150 characters"
     }
-    
+
     if (!formData.content.trim()) {
       errors.content = "Content is required"
     } else if (formData.content.length < 30) {
       errors.content = "Content must be at least 30 characters"
     }
-    
+
     if (!formData.category) {
       errors.category = "Category is required"
     }
-    
+
     if (formData.tags.length === 0) {
       errors.tags = "At least one tag is required"
     }
-    
+
     // Show validation errors as toast notifications
-    Object.values(errors).forEach(errorMessage => {
+    Object.values(errors).forEach((errorMessage) => {
       toast({
         title: "Validation Error",
         description: errorMessage,
         variant: "destructive",
       })
     })
-    
+
     return Object.keys(errors).length === 0
   }
-  
-  // Handle form submission
+
+  // Handle form submission with content moderation
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
-    
+
+    // Check title and content for inappropriate language
+    const isTitleAppropriate = await checkContent(formData.title)
+    if (!isTitleAppropriate) return
+
+    const isContentAppropriate = await checkContent(formData.content)
+    if (!isContentAppropriate) return
+
     try {
-      const resultAction = await dispatch(submitQuestion({
-        title: formData.title,
-        content: formData.content,
-        category: formData.category,
-        tags: formData.tags,
-      }))
-      
+      const resultAction = await dispatch(
+        submitQuestion({
+          title: formData.title,
+          content: formData.content,
+          category: formData.category,
+          tags: formData.tags,
+        }),
+      )
+
       if (submitQuestion.fulfilled.match(resultAction)) {
         toast({
           title: "Question posted",
@@ -190,11 +200,14 @@ export default function AskQuestionPage() {
       console.error("Failed to post question:", error)
     }
   }
-  
+
   return (
     <div className="ask-question-container">
-      <h1 className="ask-question-title">Ask a Question</h1>
+      {/* Gemini API Key Prompt component will only show if needed */}
+      <GeminiApiKeyPrompt />
       
+      <h1 className="ask-question-title">Ask a Question</h1>
+
       <form className="ask-question-form" onSubmit={handleSubmit}>
         <div className="ask-question-field">
           <Label htmlFor="title">Title</Label>
@@ -206,11 +219,9 @@ export default function AskQuestionPage() {
             value={formData.title}
             onChange={handleChange}
           />
-          <p className="ask-question-hint">
-            Be specific and imagine you're asking a question to another person
-          </p>
+          <p className="ask-question-hint">Be specific and imagine you're asking a question to another person</p>
         </div>
-        
+
         <div className="ask-question-field">
           <Label htmlFor="category">Category</Label>
           <Select value={formData.category} onValueChange={handleCategoryChange}>
@@ -228,7 +239,7 @@ export default function AskQuestionPage() {
             </SelectContent>
           </Select>
         </div>
-        
+
         <div className="ask-question-field">
           <Label htmlFor="tags">Tags</Label>
           <Input
@@ -245,26 +256,18 @@ export default function AskQuestionPage() {
             {formData.tags.map((tag) => (
               <Badge key={tag} variant="outline" className="ask-question-tag">
                 {tag}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="ask-question-tag-remove"
-                  onClick={() => removeTag(tag)}
-                >
+                <Button variant="ghost" size="icon" className="ask-question-tag-remove" onClick={() => removeTag(tag)}>
                   <X className="h-3 w-3" />
                 </Button>
               </Badge>
             ))}
           </div>
-          <p className="ask-question-hint">
-            Add up to 5 tags to describe what your question is about
-          </p>
+          <p className="ask-question-hint">Add up to 5 tags to describe what your question is about</p>
         </div>
-        
+
         <div className="ask-question-field">
           <Label htmlFor="content">Content</Label>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="ask-question-tabs">
-            
             <TabsContent value="write">
               <Textarea
                 id="content"
@@ -288,13 +291,11 @@ export default function AskQuestionPage() {
               </div>
             </TabsContent>
           </Tabs>
-          <p className="ask-question-hint">
-            Include all the information someone would need to answer your question
-          </p>
+          <p className="ask-question-hint">Include all the information someone would need to answer your question</p>
         </div>
-        
-        <Button type="submit" className="ask-question-submit" disabled={loading}>
-          {loading ? "Posting..." : "Post Your Question"}
+
+        <Button type="submit" className="ask-question-submit" disabled={loading || isChecking}>
+          {loading || isChecking ? "Processing..." : "Post Your Question"}
         </Button>
       </form>
     </div>

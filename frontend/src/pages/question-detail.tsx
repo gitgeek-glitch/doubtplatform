@@ -29,6 +29,9 @@ import { cn } from "@/lib/utils"
 import MarkdownRenderer from "@/components/markdown-renderer"
 import debounce from "lodash/debounce"
 
+// Import the useContentModeration hook at the top of the file
+import { useContentModeration } from "@/hooks/use-content-moderation"
+
 export default function QuestionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const dispatch = useAppDispatch()
@@ -53,91 +56,93 @@ export default function QuestionDetailPage() {
   const fetchingRef = useRef<boolean>(false)
   const navigate = useNavigate()
 
+  // Add the useContentModeration hook inside the component
+  // Add this after the other hooks
+  const { checkContent, isChecking } = useContentModeration()
+
   // Fetch question details on mount with cache busting
-const fetchQuestionWithDetails = useCallback(
-  (forceRefresh = false) => {
-    if (!id || fetchingRef.current) return
+  const fetchQuestionWithDetails = useCallback(
+    (forceRefresh = false) => {
+      if (!id || fetchingRef.current) return
 
-    const now = Date.now()
-    if (forceRefresh || now - lastFetchTimeRef.current > 30000) {
-      lastFetchTimeRef.current = now
-      fetchingRef.current = true
+      const now = Date.now()
+      if (forceRefresh || now - lastFetchTimeRef.current > 30000) {
+        lastFetchTimeRef.current = now
+        fetchingRef.current = true
 
-      if (forceRefresh) {
-        setIsRefreshing(true)
+        if (forceRefresh) {
+          setIsRefreshing(true)
+        }
+
+        dispatch(fetchQuestionDetails(id))
+          .unwrap()
+          .then(() => {
+            if (isAuthenticated) {
+              return dispatch(fetchVotes(id)).unwrap()
+            }
+          })
+          .then(() => {
+            if (forceRefresh) {
+              setIsRefreshing(false)
+              stableToast.current({
+                title: "Refreshed",
+                description: "Question and answers have been updated",
+              })
+            }
+            fetchingRef.current = false
+          })
+          .catch((error) => {
+            console.error("Error fetching question details:", error)
+            if (forceRefresh) {
+              setIsRefreshing(false)
+              stableToast.current({
+                title: "Error",
+                description: "Failed to refresh question details",
+                variant: "destructive",
+              })
+            }
+            fetchingRef.current = false
+          })
       }
-
-      dispatch(fetchQuestionDetails(id))
-        .unwrap()
-        .then(() => {
-          if (isAuthenticated) {
-            return dispatch(fetchVotes(id)).unwrap()
-          }
-        })
-        .then(() => {
-          if (forceRefresh) {
-            setIsRefreshing(false)
-            stableToast.current({
-              title: "Refreshed",
-              description: "Question and answers have been updated",
-            })
-          }
-          fetchingRef.current = false
-        })
-        .catch((error) => {
-          console.error("Error fetching question details:", error)
-          if (forceRefresh) {
-            setIsRefreshing(false)
-            stableToast.current({
-              title: "Error",
-              description: "Failed to refresh question details",
-              variant: "destructive",
-            })
-          }
-          fetchingRef.current = false
-        })
-    }
-  },
-  [id, isAuthenticated, dispatch] // ❌ removed `toast`
-)
+    },
+    [id, isAuthenticated, dispatch], // ❌ removed `toast`
+  )
 
   // Initial fetch on mount
   useEffect(() => {
-  if (id) {
-    fetchQuestionWithDetails(true)
-  }
-
-  return () => {
-    dispatch(resetQuestionState())
-    if (refreshIntervalRef.current) {
-      clearInterval(refreshIntervalRef.current)
+    if (id) {
+      fetchQuestionWithDetails(true)
     }
-  }
-}, [id, dispatch, fetchQuestionWithDetails])
 
+    return () => {
+      dispatch(resetQuestionState())
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current)
+      }
+    }
+  }, [id, dispatch, fetchQuestionWithDetails])
 
   // Set up polling for new answers
   useEffect(() => {
-  if (!id) return
+    if (!id) return
 
-  // Clear existing interval if any
-  if (refreshIntervalRef.current) {
-    clearInterval(refreshIntervalRef.current)
-  }
+    // Clear existing interval if any
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current)
+    }
 
-  // Set polling interval
-  const interval = setInterval(() => {
-    fetchQuestionWithDetails(false)
-  }, 60000)
+    // Set polling interval
+    const interval = setInterval(() => {
+      fetchQuestionWithDetails(false)
+    }, 60000)
 
-  refreshIntervalRef.current = interval
+    refreshIntervalRef.current = interval
 
-  // Cleanup on unmount
-  return () => {
-    clearInterval(interval)
-  }
-}, [id, fetchQuestionWithDetails])
-
+    // Cleanup on unmount
+    return () => {
+      clearInterval(interval)
+    }
+  }, [id, fetchQuestionWithDetails])
 
   // Refresh answers when window regains focus, but with throttling
   useEffect(() => {
@@ -256,63 +261,68 @@ const fetchQuestionWithDetails = useCallback(
     }
   }
 
-// Handle submit answer
-const handleSubmitAnswer = async (e: React.FormEvent) => {
-  e.preventDefault()
+  // Update the handleSubmitAnswer function to check content before submission
+  // Replace the existing handleSubmitAnswer function with this one
+  const handleSubmitAnswer = async (e: React.FormEvent) => {
+    e.preventDefault()
 
-  if (!isAuthenticated) {
-    toast({
-      title: "Authentication required",
-      description: "Please sign in to answer questions",
-      variant: "destructive",
-    })
-    return
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to answer questions",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check if answer content is empty
+    if (!answerContent.trim()) {
+      toast({
+        title: "Empty answer",
+        description: "Please write something before submitting",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Add validation for minimum answer length (20 characters)
+    if (answerContent.trim().length < 20) {
+      toast({
+        title: "Answer too short",
+        description: "Your answer must be at least 20 characters long",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check content for inappropriate language
+    const isContentAppropriate = await checkContent(answerContent)
+    if (!isContentAppropriate) return
+
+    if (!id) return
+
+    try {
+      setSubmitting(true)
+      await dispatch(submitAnswer({ questionId: id, content: answerContent })).unwrap()
+      setAnswerContent("")
+
+      toast({
+        title: "Answer submitted",
+        description: "Your answer has been posted successfully",
+      })
+
+      // Refresh question details to show the new answer
+      fetchQuestionWithDetails(true)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit your answer",
+        variant: "destructive",
+      })
+    } finally {
+      setSubmitting(false)
+    }
   }
-
-  // Check if answer content is empty
-  if (!answerContent.trim()) {
-    toast({
-      title: "Empty answer",
-      description: "Please write something before submitting",
-      variant: "destructive",
-    })
-    return
-  }
-
-  // Add validation for minimum answer length (20 characters)
-  if (answerContent.trim().length < 20) {
-    toast({
-      title: "Answer too short",
-      description: "Your answer must be at least 20 characters long",
-      variant: "destructive",
-    })
-    return
-  }
-
-  if (!id) return
-
-  try {
-    setSubmitting(true)
-    await dispatch(submitAnswer({ questionId: id, content: answerContent })).unwrap()
-    setAnswerContent("")
-
-    toast({
-      title: "Answer submitted",
-      description: "Your answer has been posted successfully",
-    })
-
-    // Refresh question details to show the new answer
-    fetchQuestionWithDetails(true)
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: "Failed to submit your answer",
-      variant: "destructive",
-    })
-  } finally {
-    setSubmitting(false)
-  }
-}
 
   // Handle share question
   const handleShareQuestion = () => {
@@ -702,12 +712,14 @@ const handleSubmitAnswer = async (e: React.FormEvent) => {
           />
 
           <div className="flex justify-end">
+            {/* Update the Button in the answer form to show loading state when checking content
+            Find the submit button in the answer form and replace it with: */}
             <Button
               className="ask-question-submit"
-              disabled={submitting || !isAuthenticated || !answerContent.trim()}
+              disabled={submitting || !isAuthenticated || !answerContent.trim() || isChecking}
               onClick={handleSubmitAnswer}
             >
-              {submitting ? "Submitting..." : "Post Your Answer"}
+              {submitting || isChecking ? "Processing..." : "Post Your Answer"}
             </Button>
           </div>
 
