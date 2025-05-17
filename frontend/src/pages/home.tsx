@@ -313,7 +313,7 @@ export default function HomePage() {
         <div className="home-sidebar">
           <div className="home-sidebar-widgets">
             <TopContributors />
-            <VotesDistribution />
+            <VotesDistribution communityView={true} />
           </div>
         </div>
       </div>

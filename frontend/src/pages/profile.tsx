@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { MessageSquare, Award, Calendar, Edit, ArrowUp, TrendingUp } from 'lucide-react'
+import { MessageSquare, Award, Calendar, Edit, ArrowUp, TrendingUp } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import QuestionCard from "@/components/question-card"
 import { cn } from "@/lib/utils"
@@ -17,23 +17,23 @@ import VotesDistribution from "@/components/votes-distribution"
 
 // Role thresholds - match with backend User.js model
 const ROLE_THRESHOLDS = {
-  NEWBIE: 0,       // 0-99 answer upvotes
+  NEWBIE: 0, // 0-99 answer upvotes
   INTERMEDIATE: 100, // 100-499 answer upvotes
-  EXPERT: 500,     // 500-999 answer upvotes
-  MASTER: 1000     // 1000+ answer upvotes
+  EXPERT: 500, // 500-999 answer upvotes
+  MASTER: 1000, // 1000+ answer upvotes
 }
 
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
   const dispatch = useAppDispatch()
-  const { 
-    currentProfile: user, 
-    userQuestions: questions, 
-    userAnswers: answers, 
+  const {
+    currentProfile: user,
+    userQuestions: questions,
+    userAnswers: answers,
     userVotesDistribution,
-    loading 
-  } = useAppSelector(state => state.users)
-  const { user: currentUser } = useAppSelector(state => state.auth)
+    loading,
+  } = useAppSelector((state) => state.users)
+  const { user: currentUser } = useAppSelector((state) => state.auth)
   const [activeTab, setActiveTab] = useState("questions")
 
   const isOwnProfile = currentUser?._id === id
@@ -42,7 +42,7 @@ export default function ProfilePage() {
     if (id) {
       dispatch(fetchUserProfile(id))
     }
-    
+
     // Cleanup on unmount
     return () => {
       dispatch(resetUserState())
@@ -61,50 +61,51 @@ export default function ProfilePage() {
   const getRoleBadgeColor = (role: string): string => {
     switch (role) {
       case "Master":
-        return "bg-amber-500 text-white";
+        return "bg-amber-500 text-white"
       case "Expert":
-        return "bg-blue-500 text-white";
+        return "bg-blue-500 text-white"
       case "Intermediate":
-        return "bg-green-500 text-white";
+        return "bg-green-500 text-white"
       case "Newbie":
       default:
-        return "bg-gray-500 text-white";
+        return "bg-gray-500 text-white"
     }
   }
 
   // Calculate progress towards next role
   const calculateRoleProgress = (): { progress: number; nextRole: string; upvotesNeeded: number } => {
-    if (!user || !userVotesDistribution) return { progress: 0, nextRole: "Intermediate", upvotesNeeded: 100 };
+    if (!user || !userVotesDistribution) return { progress: 0, nextRole: "Intermediate", upvotesNeeded: 100 }
 
-    const upvotes = userVotesDistribution.answerUpvotes;
-    
+    const upvotes = userVotesDistribution.answerUpvotes
+
     if (upvotes >= ROLE_THRESHOLDS.MASTER) {
-      return { progress: 100, nextRole: "Master", upvotesNeeded: 0 }; // Already at highest role
+      return { progress: 100, nextRole: "Master", upvotesNeeded: 0 } // Already at highest role
     } else if (upvotes >= ROLE_THRESHOLDS.EXPERT) {
-      const progress = ((upvotes - ROLE_THRESHOLDS.EXPERT) / (ROLE_THRESHOLDS.MASTER - ROLE_THRESHOLDS.EXPERT)) * 100;
-      return { 
-        progress: Math.min(progress, 99), 
-        nextRole: "Master", 
-        upvotesNeeded: ROLE_THRESHOLDS.MASTER - upvotes 
-      };
+      const progress = ((upvotes - ROLE_THRESHOLDS.EXPERT) / (ROLE_THRESHOLDS.MASTER - ROLE_THRESHOLDS.EXPERT)) * 100
+      return {
+        progress: Math.min(progress, 99),
+        nextRole: "Master",
+        upvotesNeeded: ROLE_THRESHOLDS.MASTER - upvotes,
+      }
     } else if (upvotes >= ROLE_THRESHOLDS.INTERMEDIATE) {
-      const progress = ((upvotes - ROLE_THRESHOLDS.INTERMEDIATE) / (ROLE_THRESHOLDS.EXPERT - ROLE_THRESHOLDS.INTERMEDIATE)) * 100;
-      return { 
-        progress: Math.min(progress, 99), 
-        nextRole: "Expert", 
-        upvotesNeeded: ROLE_THRESHOLDS.EXPERT - upvotes 
-      };
+      const progress =
+        ((upvotes - ROLE_THRESHOLDS.INTERMEDIATE) / (ROLE_THRESHOLDS.EXPERT - ROLE_THRESHOLDS.INTERMEDIATE)) * 100
+      return {
+        progress: Math.min(progress, 99),
+        nextRole: "Expert",
+        upvotesNeeded: ROLE_THRESHOLDS.EXPERT - upvotes,
+      }
     } else {
-      const progress = (upvotes / ROLE_THRESHOLDS.INTERMEDIATE) * 100;
-      return { 
-        progress: Math.min(progress, 99), 
-        nextRole: "Intermediate", 
-        upvotesNeeded: ROLE_THRESHOLDS.INTERMEDIATE - upvotes 
-      };
+      const progress = (upvotes / ROLE_THRESHOLDS.INTERMEDIATE) * 100
+      return {
+        progress: Math.min(progress, 99),
+        nextRole: "Intermediate",
+        upvotesNeeded: ROLE_THRESHOLDS.INTERMEDIATE - upvotes,
+      }
     }
-  };
+  }
 
-  const roleProgress = calculateRoleProgress();
+  const roleProgress = calculateRoleProgress()
 
   if (loading) {
     return (
@@ -162,9 +163,7 @@ export default function ProfilePage() {
                 <h1 className="profile-name">{user.name}</h1>
                 <div className="flex items-center gap-2 mt-1">
                   <p className="profile-username">@{user.email.split("@")[0]}</p>
-                  <Badge className={getRoleBadgeColor(user.role)}>
-                    {user.role}
-                  </Badge>
+                  <Badge className={getRoleBadgeColor(user.role)}>{user.role}</Badge>
                 </div>
               </div>
 
@@ -183,14 +182,17 @@ export default function ProfilePage() {
               <div className="mt-3 mb-2">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="flex items-center gap-1">
-                    <TrendingUp className="h-4 w-4" /> 
+                    <TrendingUp className="h-4 w-4" />
                     Progress to {roleProgress.nextRole}
                   </span>
-                  <span>{userVotesDistribution.answerUpvotes} / {user.role === "Newbie" ? 100 : user.role === "Intermediate" ? 500 : 1000}</span>
+                  <span>
+                    {userVotesDistribution.answerUpvotes} /{" "}
+                    {user.role === "Newbie" ? 100 : user.role === "Intermediate" ? 500 : 1000}
+                  </span>
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2.5">
-                  <div 
-                    className="bg-purple-600 h-2.5 rounded-full" 
+                  <div
+                    className="bg-purple-600 h-2.5 rounded-full"
                     style={{ width: `${roleProgress.progress}%` }}
                   ></div>
                 </div>
@@ -245,16 +247,10 @@ export default function ProfilePage() {
           {/* Tabs for questions and answers */}
           <Tabs defaultValue="questions" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="profile-tabs-list">
-              <TabsTrigger 
-                value="questions" 
-                className={cn(activeTab === "questions" && "profile-tab-active")}
-              >
+              <TabsTrigger value="questions" className={cn(activeTab === "questions" && "profile-tab-active")}>
                 Questions ({questions.length})
               </TabsTrigger>
-              <TabsTrigger 
-                value="answers" 
-                className={cn(activeTab === "answers" && "profile-tab-active")}
-              >
+              <TabsTrigger value="answers" className={cn(activeTab === "answers" && "profile-tab-active")}>
                 Answers ({answers.length})
               </TabsTrigger>
             </TabsList>
@@ -305,10 +301,19 @@ export default function ProfilePage() {
             </TabsContent>
           </Tabs>
         </div>
-        
+
         {/* Right sidebar with votes distribution */}
         <div className="md:col-span-1">
-          <VotesDistribution />
+          <VotesDistribution
+            communityView={false}
+            userData={userVotesDistribution ? {
+              answerUpvotes: userVotesDistribution.answerUpvotes,
+              answerDownvotes: userVotesDistribution.answerDownvotes
+            } : {
+              answerUpvotes: 0,
+              answerDownvotes: 0
+            }}
+          />
         </div>
       </div>
     </div>

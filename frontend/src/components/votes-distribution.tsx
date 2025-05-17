@@ -1,51 +1,127 @@
-"use client"
-
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { fetchUserVotesDistribution } from "@/redux/slices/usersSlice"
+import { fetchLeaderboard } from "@/redux/slices/leaderboardSlice"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowUp, ArrowDown } from "lucide-react"
+import { ArrowUp, ArrowDown, Users } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
 
-export default function VotesDistribution() {
+// Component props to make it flexible for different use cases
+interface VotesDistributionProps {
+  // If true, shows community-wide stats instead of individual user stats
+  communityView?: boolean;
+  // If provided, will use this directly instead of fetching
+  userData?: {
+    answerUpvotes: number;
+    answerDownvotes: number;
+  };
+}
+
+export default function VotesDistribution({ 
+  communityView = false,
+  userData
+}: VotesDistributionProps) {
   const { id } = useParams<{ id: string }>()
   const dispatch = useAppDispatch()
-  const { userVotesDistribution, votesLoading } = useAppSelector((state) => state.users)
-  const [fetchAttempted, setFetchAttempted] = useState(false)
+  
+  // Get user-specific data from users state
+  const { 
+    userVotesDistribution, 
+    votesLoading  } = useAppSelector((state) => state.users)
+  
+  // Get community-wide data from leaderboard state
+  const { totalUpvotes, totalDownvotes, loading: leaderboardLoading, lastFetched } = useAppSelector(
+    (state) => state.leaderboard
+  )
+
+  // Determine if we're in profile mode or community mode
+  const isProfileMode = !communityView && !!id
 
   useEffect(() => {
-    // Only fetch once per component mount and if not already loading and if we have a userId
-    if (!fetchAttempted && !votesLoading && id) {
-      setFetchAttempted(true)
+    // If in profile mode, fetch that specific user's votes
+    if (isProfileMode && !userData) {
       dispatch(fetchUserVotesDistribution(id))
+    } 
+    // If in community mode or no ID is available, fetch community-wide stats
+    else if (communityView && (!lastFetched || Date.now() - lastFetched > 5 * 60 * 1000)) {
+      dispatch(fetchLeaderboard())
     }
-  }, [dispatch, votesLoading, id, fetchAttempted])
+  }, [dispatch, isProfileMode, id, communityView, lastFetched, userData])
 
-  // Prepare data for the pie chart - showing only answer votes for now
-  const pieData = userVotesDistribution ? [
-    { name: "Answer Upvotes", value: userVotesDistribution.answerUpvotes, color: "#9333ea" }, // Purple for upvotes
-    { name: "Answer Downvotes", value: userVotesDistribution.answerDownvotes, color: "#e11d48" }, // Red for downvotes
-  ] : []
+  // Use provided userData if available, otherwise use data from the store
+  const votesData = userData || userVotesDistribution
 
-  const totalVotes = userVotesDistribution ? 
-    userVotesDistribution.answerUpvotes + userVotesDistribution.answerDownvotes : 0
+  // Prepare data for the chart based on the mode
+ // In votes-distribution.tsx - modify these lines around line 70-75
+// Fix the getChartData function that prepares pie chart data
+
+const getChartData = () => {
+  // Check if we're in profile mode and we have data either from props or store
+  if (isProfileMode) {
+    const data = userData || userVotesDistribution;
+    if (data) {
+      return [
+        { name: "Answer Upvotes", value: Number(data.answerUpvotes) || 0, color: "#9333ea" },
+        { name: "Answer Downvotes", value: Number(data.answerDownvotes) || 0, color: "#e11d48" },
+      ];
+    }
+  } else if (!isProfileMode) {
+    // Community-wide data
+    return [
+      { name: "Total Upvotes", value: totalUpvotes, color: "#9333ea" },
+      { name: "Total Downvotes", value: totalDownvotes, color: "#e11d48" },
+    ];
+  }
+  return [];
+};
+// Near the beginning of the component function
+console.log("VotesDistribution props:", { communityView, userData });
+console.log("Store data:", { userVotesDistribution, votesLoading });
+
+  const pieData = getChartData()
+  
+  // Calculate total votes based on the mode
+  const totalVotes = isProfileMode
+  ? (userData?.answerUpvotes || 0) + (userData?.answerDownvotes || 0) || 
+    (userVotesDistribution?.answerUpvotes || 0) + (userVotesDistribution?.answerDownvotes || 0)
+  : totalUpvotes + totalDownvotes;
+
+  // Determine if we're in a loading state
+  const isLoading = (!userData && isProfileMode) ? votesLoading : leaderboardLoading
+  
+  // Determine if we have data
+  const hasData = isProfileMode ? !!votesData : (totalUpvotes > 0 || totalDownvotes > 0)
+
+  console.log("Final data we're using:", {
+  isProfileMode,
+  userData,
+  votesData,
+  pieData,
+  totalVotes
+  });
 
   return (
     <Card className="votes-distribution-card">
       <CardHeader className="votes-distribution-header">
-        <CardTitle className="votes-distribution-title">User Votes Distribution</CardTitle>
+        <CardTitle className="votes-distribution-title">
+          {isProfileMode ? "User Votes Distribution" : "Community Votes Distribution"}
+        </CardTitle>
       </CardHeader>
       <CardContent className="votes-distribution-content">
-        {votesLoading ? (
+        {isLoading ? (
           <div className="flex justify-center items-center h-[200px]">
             <Skeleton className="h-[180px] w-[180px] rounded-full" />
           </div>
-        ) : !userVotesDistribution ? (
-          <div className="flex justify-center items-center h-[200px] text-muted-foreground">No vote data available</div>
+        ) : !hasData ? (
+          <div className="flex justify-center items-center h-[200px] text-muted-foreground">
+            {isProfileMode ? "No vote data available" : "No community votes data available"}
+          </div>
         ) : totalVotes === 0 ? (
-          <div className="flex justify-center items-center h-[200px] text-muted-foreground">No votes received yet</div>
+          <div className="flex justify-center items-center h-[200px] text-muted-foreground">
+            {isProfileMode ? "No votes received yet" : "No votes recorded in the community yet"}
+          </div>
         ) : (
           <>
             <div className="votes-distribution-chart">
@@ -80,16 +156,28 @@ export default function VotesDistribution() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="votes-distribution-stats">
-                <div className="votes-distribution-stat">
-                  <ArrowUp className="votes-distribution-icon votes-distribution-icon-up" />
-                  <span>{userVotesDistribution.answerUpvotes} upvotes</span>
-                </div>
-                <div className="votes-distribution-stat">
-                  <ArrowDown className="votes-distribution-icon votes-distribution-icon-down" />
-                  <span>{userVotesDistribution.answerDownvotes} downvotes</span>
-                </div>
+              <div className="votes-distribution-stat">
+                <ArrowUp className="votes-distribution-icon votes-distribution-icon-up" />
+                <span>
+                  {isProfileMode
+                    ? `${(userData?.answerUpvotes || userVotesDistribution?.answerUpvotes || 0)} upvotes`
+                    : `${totalUpvotes} upvotes`}
+                </span>
               </div>
+              <div className="votes-distribution-stat">
+                <ArrowDown className="votes-distribution-icon votes-distribution-icon-down" />
+                <span>
+                  {isProfileMode
+                    ? `${(userData?.answerDownvotes || userVotesDistribution?.answerDownvotes || 0)} downvotes`
+                    : `${totalDownvotes} downvotes`}
+                </span>
+              </div>
+                {!isProfileMode && (
+                  <div className="votes-distribution-stat mt-2">
+                    <Users className="votes-distribution-icon" />
+                    <span className="text-sm text-muted-foreground">Community statistics</span>
+                  </div>
+                )}
             </div>
           </>
         )}
