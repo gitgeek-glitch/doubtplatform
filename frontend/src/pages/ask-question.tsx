@@ -17,9 +17,8 @@ import { X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import MarkdownRenderer from "@/components/markdown-renderer"
 
-// Import the useContentModeration hook at the top of the file
+// Import the useContentModeration hook
 import { useContentModeration } from "@/hooks/use-content-moderation"
-import { GeminiApiKeyPrompt } from "@/components/gemini-key-prompt"
 
 export default function AskQuestionPage() {
   const dispatch = useAppDispatch()
@@ -40,6 +39,18 @@ export default function AskQuestionPage() {
   
   // Get content moderation hook
   const { checkContent, isChecking } = useContentModeration()
+
+  // Check if Gemini API key is available
+  useEffect(() => {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+    if (!apiKey) {
+      toast({
+        title: "Configuration Error",
+        description: "Gemini API key is not configured. Content moderation may not work properly.",
+        variant: "destructive",
+      })
+    }
+  }, [toast])
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -203,9 +214,6 @@ export default function AskQuestionPage() {
 
   return (
     <div className="ask-question-container">
-      {/* Gemini API Key Prompt component will only show if needed */}
-      <GeminiApiKeyPrompt />
-      
       <h1 className="ask-question-title">Ask a Question</h1>
 
       <form className="ask-question-form" onSubmit={handleSubmit}>

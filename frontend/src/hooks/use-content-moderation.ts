@@ -14,6 +14,13 @@ export function useContentModeration() {
    * @returns A promise that resolves to true if the content is appropriate, false otherwise
    */
   const checkContent = async (content: string): Promise<boolean> => {
+    // Check if API key is available
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+    if (!apiKey) {
+      console.warn("Gemini API key not configured, skipping content moderation")
+      return true // Skip moderation if no API key
+    }
+
     setIsChecking(true)
 
     try {
@@ -22,7 +29,7 @@ export function useContentModeration() {
       if (!result.isAppropriate) {
         toast({
           title: "Please use appropriate language",
-          description: "Your content contains inappropriate language and cannot be posted.",
+          description: result.reason || "Your content contains inappropriate language and cannot be posted.",
           variant: "destructive",
         })
         return false
@@ -31,7 +38,14 @@ export function useContentModeration() {
       return true
     } catch (error) {
       console.error("Error checking content:", error)
-      // In case of error, allow the content to pass through
+      
+      // Show a warning toast but allow content to pass through
+      toast({
+        title: "Content moderation unavailable",
+        description: "Unable to check content at this time. Please ensure your content is appropriate.",
+        variant: "default",
+      })
+      
       return true
     } finally {
       setIsChecking(false)

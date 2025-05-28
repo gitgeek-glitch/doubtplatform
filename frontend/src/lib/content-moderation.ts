@@ -1,36 +1,25 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
 /**
- * Gets API key from environment variable or localStorage as fallback
+ * Gets API key from environment variable
  */
 const getGeminiApiKey = () => {
-  // First check if the API key is available in environment variables
-  if (import.meta.env.VITE_GEMINI_API_KEY) {
-    return import.meta.env.VITE_GEMINI_API_KEY
+  // Check if the API key is available in environment variables
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+  
+  if (!apiKey) {
+    console.error("VITE_GEMINI_API_KEY not found in environment variables")
+    throw new Error("Gemini API key not configured")
   }
   
-  // Directly use environment API key if defined (for hardcoded value in .env)
-  if (import.meta.env.GEMINI_API_KEY) {
-    return import.meta.env.GEMINI_API_KEY
-  }
-  
-  // Fallback to localStorage for client-side usage
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("GEMINI_API_KEY") || ""
-  }
-  
-  return ""
+  return apiKey
 }
 
 /**
- * Creates a new GenerativeAI instance with the current API key
+ * Creates a new GenerativeAI instance with the API key from environment
  */
 const getGenAIInstance = () => {
   const apiKey = getGeminiApiKey()
-  if (!apiKey) {
-    console.error("Attempted to create GenerativeAI instance with empty API key")
-    throw new Error("No API key available")
-  }
   return new GoogleGenerativeAI(apiKey)
 }
 
@@ -56,16 +45,9 @@ export async function checkContentModeration(content: string): Promise<Moderatio
       return { isAppropriate: true }
     }
 
-    // Always get a fresh instance with the latest API key
+    // Get the generative AI instance
     const genAI = getGenAIInstance()
     
-    // Check if we have a valid API key
-    const apiKey = getGeminiApiKey()
-    if (!apiKey) {
-      console.warn("No Gemini API key available, skipping content moderation")
-      return { isAppropriate: true }
-    }
-
     // Get the generative model
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
 
