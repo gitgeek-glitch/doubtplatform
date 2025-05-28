@@ -164,60 +164,56 @@ export default function QuestionDetailPage() {
   }, 500)
 
   const handleAnswerVote = async (answerId: string, value: number) => {
-    if (!isAuthenticated) {
+  if (!isAuthenticated) {
+    toast({
+      title: "Authentication required",
+      description: "Please sign in to vote",
+      variant: "destructive",
+    })
+    return
+  }
+
+  if (votingAnswers.has(answerId)) {
+    return
+  }
+
+  try {
+    setVotingAnswers((prev) => new Set(prev).add(answerId))
+
+    const currentVote = typeof answerVotes[answerId] === "number" ? answerVotes[answerId] : 0
+    const finalValue = currentVote === value ? 0 : value;
+
+    await dispatch(voteAnswer({ answerId, value: finalValue })).unwrap();
+
+    toast({
+      title: "Vote registered",
+      description: "Your vote has been recorded",
+    })
+  } catch (error: any) {
+    // Fix: Check status code properly
+    const status = error?.status || error?.code
+    const errorMessage = error?.message || error || "Unknown error"
+
+    if (status === 409) {
+      fetchQuestionWithDetails(true)
+      return
+    } else {
       toast({
-        title: "Authentication required",
-        description: "Please sign in to vote",
+        title: "Error",
+        description: errorMessage,
         variant: "destructive",
       })
-      return
     }
-
-    if (votingAnswers.has(answerId)) {
-      return
-    }
-
-    try {
-      setVotingAnswers((prev) => new Set(prev).add(answerId))
-
-      const currentVote = answerVotes[answerId] || 0
-      const finalValue = currentVote === value ? 0 : value
-
-      await dispatch(voteAnswer({ answerId, value: finalValue })).unwrap()
-
-      toast({
-        title: "Vote registered",
-        description: "Your vote has been recorded",
+  } finally {
+    setTimeout(() => {
+      setVotingAnswers((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(answerId)
+        return newSet
       })
-    } catch (error: any) {
-      const errorMessage = typeof error === "string" ? error : error?.message || "Unknown error"
-
-      if (errorMessage.includes("409") || errorMessage.includes("Duplicate")) {
-        toast({
-          title: "Vote conflict",
-          description: "Please refresh the page and try again",
-          variant: "destructive",
-        })
-        setTimeout(() => {
-          fetchQuestionWithDetails(true)
-        }, 1000)
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to register your vote",
-          variant: "destructive",
-        })
-      }
-    } finally {
-      setTimeout(() => {
-        setVotingAnswers((prev) => {
-          const newSet = new Set(prev)
-          newSet.delete(answerId)
-          return newSet
-        })
-      }, 1000)
-    }
+    }, 1000)
   }
+}
 
   const handleAcceptAnswer = async (answerId: string) => {
     if (!isAuthenticated || !question || user?._id !== question.author._id) {
@@ -583,7 +579,7 @@ export default function QuestionDetailPage() {
                               >
                                 <ThumbsUp className="h-4 w-4" />
                               </Button>
-                              <span className="text-sm font-medium">{answer.upvotes - answer.downvotes}</span>
+                              <span className="text-sm font-medium">{(answer.upvotes || 0) - (answer.downvotes || 0)}</span>
                               <Button
                                 variant="ghost"
                                 size="sm"

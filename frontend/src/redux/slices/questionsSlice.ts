@@ -24,6 +24,8 @@ interface Question {
 interface Answer {
   _id: string
   content: string
+  upvotedBy: string[]
+  downvotedBy: string[]
   upvotes: number
   downvotes: number
   author: Author
@@ -186,7 +188,11 @@ export const voteAnswer = createAsyncThunk(
         answer: response.data.answer,
       }
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || "Failed to vote")
+      return rejectWithValue({
+        message: err.response?.data?.message || "Failed to vote",
+        status: err.response?.status,
+        code: err.response?.status
+      })
     }
   },
 )
@@ -370,22 +376,29 @@ const questionsSlice = createSlice({
       })
 
       .addCase(fetchVotes.fulfilled, (state, action) => {
-        state.answerVotes = action.payload.answerVotes
+        const votes = action.payload.answerVotes;
+        state.answerVotes = {};
+        for (const vote of votes) {
+          state.answerVotes[vote.answerId] = vote.value;
+        }
       })
 
       .addCase(voteAnswer.fulfilled, (state, action) => {
-        const { answerId, vote, answer } = action.payload
+        const updatedAnswer = action.payload.answer;
+        const vote = action.payload.vote;
 
-        if (answer) {
-          state.answers = state.answers.map((a) =>
-            a._id === answerId ? { ...a, upvotes: answer.upvotes, downvotes: answer.downvotes } : a,
-          )
+        const index = state.answers.findIndex((a) => a._id === updatedAnswer._id);
+        if (index !== -1) {
+          state.answers[index] = {
+            ...state.answers[index],
+            ...updatedAnswer,
+          };
         }
 
         state.answerVotes = {
           ...state.answerVotes,
-          [answerId]: vote,
-        }
+          [updatedAnswer._id]: vote?.value ?? 0,
+        };
       })
 
       .addCase(acceptAnswer.fulfilled, (state, action) => {

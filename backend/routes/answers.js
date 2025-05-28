@@ -1,5 +1,4 @@
 import express from "express"
-import mongoose from "mongoose"
 import Answer from "../models/Answer.js"
 import Question from "../models/Question.js"
 import Vote from "../models/Vote.js"
@@ -10,24 +9,14 @@ import { cache } from "../server.js"
 const router = express.Router()
 
 const clearCache = (pattern) => {
-  try {
-    if (typeof cache !== "undefined" && cache && typeof cache.keys === "function") {
-      const keys = cache.keys()
-      const matchingKeys = keys.filter((key) => key.includes(pattern))
-      matchingKeys.forEach((key) => cache.del(key))
-    }
-  } catch (error) {
-    console.error("Cache clear error:", error)
-  }
+  const keys = cache.keys()
+  const matchingKeys = keys.filter((key) => key.includes(pattern))
+  matchingKeys.forEach((key) => cache.del(key))
 }
 
 router.put("/:id", auth, async (req, res) => {
   try {
     const { content } = req.body
-
-    if (!content || content.trim().length < 20) {
-      return res.status(400).json({ message: "Content must be at least 20 characters long" })
-    }
 
     const answer = await Answer.findById(req.params.id)
 
@@ -39,290 +28,230 @@ router.put("/:id", auth, async (req, res) => {
       return res.status(403).json({ message: "Not authorized to update this answer" })
     }
 
-    answer.content = content.trim()
+    answer.content = content
     await answer.save()
-    await answer.populate("author", "name avatar reputation")
+    await answer.populate("author", "name avatar")
 
     clearCache(`/api/questions/${answer.question}/answers`)
 
     res.json(answer)
   } catch (error) {
-    console.error("Update answer error:", error)
-    res.status(500).json({ message: "Failed to update answer" })
+    res.status(500).json({ message: error.message })
   }
 })
 
 router.delete("/:id", auth, async (req, res) => {
-  const session = await mongoose.startSession()
-
   try {
-    await session.withTransaction(async () => {
-      const answer = await Answer.findById(req.params.id).session(session)
+    const answer = await Answer.findById(req.params.id)
 
-      if (!answer) {
-        throw new Error("Answer not found")
-      }
+    if (!answer) {
+      return res.status(404).json({ message: "Answer not found" })
+    }
 
-      const user = await User.findById(req.user.id).session(session)
-      const question = await Question.findById(answer.question).session(session)
+    const user = await User.findById(req.user.id)
+    if (answer.author.toString() !== req.user.id && !user.isAdmin) {
+      return res.status(403).json({ message: "Not authorized to delete this answer" })
+    }
 
-      if (
-        answer.author.toString() !== req.user.id &&
-        !user?.isAdmin &&
-        question &&
-        question.author.toString() !== req.user.id
-      ) {
-        throw new Error("Not authorized to delete this answer")
-      }
+    const questionId = answer.question
 
-      const questionId = answer.question
+    await Promise.all([
+      Question.findOneAndUpdate(
+        { _id: questionId, acceptedAnswer: req.params.id },
+        { $set: { acceptedAnswer: null, isSolved: false } },
+      ),
+      Vote.deleteMany({ answer: req.params.id }),
+      answer.deleteOne(),
+    ])
 
-      await Vote.deleteMany({ answer: req.params.id }).session(session)
-
-      if (question && question.acceptedAnswer && question.acceptedAnswer.toString() === req.params.id) {
-        await Question.findByIdAndUpdate(
-          questionId,
-          { $unset: { acceptedAnswer: 1 }, $set: { isSolved: false } },
-          { session },
-        )
-      }
-
-      await Answer.findByIdAndDelete(req.params.id).session(session)
-
-      clearCache(`/api/questions/${questionId}/answers`)
-      clearCache(`/api/questions/${questionId}`)
-    })
+    clearCache(`/api/questions/${questionId}/answers`)
 
     res.json({ message: "Answer deleted successfully" })
   } catch (error) {
-    console.error("Delete answer error:", error)
-    res.status(500).json({
-      message:
-        error.message === "Answer not found"
-          ? "Answer not found"
-          : error.message === "Not authorized to delete this answer"
-            ? "Not authorized to delete this answer"
-            : "Failed to delete answer",
-    })
-  } finally {
-    await session.endSession()
+    res.status(500).json({ message: error.message })
   }
 })
 
 router.post("/:id/vote", auth, async (req, res) => {
-  const session = await mongoose.startSession()
-
   try {
-    const result = await session.withTransaction(async () => {
-      const { value } = req.body
+    const { value } = req.body
 
-      if (![-1, 0, 1].includes(value)) {
-        throw new Error("Invalid vote value. Must be -1, 0, or 1")
-      }
-
-      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        throw new Error("Invalid answer ID")
-      }
-
-      const answer = await Answer.findById(req.params.id).session(session)
-      if (!answer) {
-        throw new Error("Answer not found")
-      }
-
-      if (answer.author.toString() === req.user.id) {
-        throw new Error("Cannot vote on your own answer")
-      }
-
-      const existingVote = await Vote.findOne({
-        user: req.user.id,
-        answer: req.params.id,
-      }).session(session)
-
-      const oldValue = existingVote ? existingVote.value : 0
-      let newVote = null
-
-      if (value === 0) {
-        if (existingVote) {
-          await Vote.findByIdAndDelete(existingVote._id).session(session)
-        }
-      } else {
-        if (existingVote) {
-          if (existingVote.value === value) {
-            await Vote.findByIdAndDelete(existingVote._id).session(session)
-          } else {
-            existingVote.value = value
-            newVote = await existingVote.save({ session })
-          }
-        } else {
-          newVote = await Vote.create(
-            [
-              {
-                user: req.user.id,
-                answer: req.params.id,
-                value,
-              },
-            ],
-            { session },
-          )
-          newVote = newVote[0]
-        }
-      }
-
-      const finalValue = newVote ? newVote.value : 0
-      const voteDiff = finalValue - oldValue
-
-      if (voteDiff !== 0) {
-        const updateFields = {}
-
-        if (oldValue === 1) updateFields.upvotes = -1
-        if (oldValue === -1) updateFields.downvotes = -1
-        if (finalValue === 1) updateFields.upvotes = (updateFields.upvotes || 0) + 1
-        if (finalValue === -1) updateFields.downvotes = (updateFields.downvotes || 0) + 1
-
-        if (Object.keys(updateFields).length > 0) {
-          await Answer.findByIdAndUpdate(req.params.id, { $inc: updateFields }, { session, new: true })
-        }
-
-        const author = await User.findById(answer.author).session(session)
-        if (author) {
-          let repChange = 0
-          if (voteDiff === 1) repChange = oldValue === -1 ? 12 : 10
-          if (voteDiff === -1) repChange = oldValue === 1 ? -12 : -2
-          if (voteDiff === 2) repChange = 12
-          if (voteDiff === -2) repChange = -12
-
-          if (repChange !== 0) {
-            author.reputation = Math.max(0, author.reputation + repChange)
-            await author.save({ session })
-          }
-        }
-      }
-
-      const updatedAnswer = await Answer.findById(req.params.id).session(session)
-
-      return {
-        vote: newVote ? { value: newVote.value } : null,
-        answer: updatedAnswer,
-        voteValue: finalValue,
-      }
-    })
-
-    clearCache(`/api/questions/${result.answer.question}/answers`)
-    clearCache(`/api/questions/${result.answer.question}/votes`)
-
-    res.json({
-      vote: result.vote,
-      answer: result.answer,
-    })
-  } catch (error) {
-    console.error("Vote error:", error)
-
-    let statusCode = 500
-    let message = "Failed to process vote"
-
-    if (error.message.includes("Invalid vote value")) {
-      statusCode = 400
-      message = error.message
-    } else if (error.message.includes("Invalid answer ID")) {
-      statusCode = 400
-      message = error.message
-    } else if (error.message === "Answer not found") {
-      statusCode = 404
-      message = error.message
-    } else if (error.message.includes("Cannot vote on your own answer")) {
-      statusCode = 400
-      message = error.message
-    } else if (error.code === 11000) {
-      statusCode = 409
-      message = "Vote already exists"
+    if (![1, 0, -1].includes(value)) {
+      return res.status(400).json({ message: "Invalid vote value" })
     }
 
-    res.status(statusCode).json({ message })
-  } finally {
-    await session.endSession()
+    const answer = await Answer.findById(req.params.id)
+    if (!answer) {
+      return res.status(404).json({ message: "Answer not found" })
+    }
+
+    if (answer.author.toString() === req.user.id) {
+      return res.status(400).json({ message: "Cannot vote on your own answer" })
+    }
+
+    const userId = req.user.id
+    const hasUpvoted = answer.upvotedBy.includes(userId)
+    const hasDownvoted = answer.downvotedBy.includes(userId)
+    
+    let oldValue = 0
+    if (hasUpvoted) oldValue = 1
+    if (hasDownvoted) oldValue = -1
+
+    if (value === 1) {
+      if (hasDownvoted) {
+        await Answer.findByIdAndUpdate(req.params.id, {
+          $pull: { downvotedBy: userId },
+          $addToSet: { upvotedBy: userId }
+        })
+      } else if (!hasUpvoted) {
+        await Answer.findByIdAndUpdate(req.params.id, {
+          $addToSet: { upvotedBy: userId }
+        })
+      }
+    } else if (value === -1) {
+      if (hasUpvoted) {
+        await Answer.findByIdAndUpdate(req.params.id, {
+          $pull: { upvotedBy: userId },
+          $addToSet: { downvotedBy: userId }
+        })
+      } else if (!hasDownvoted) {
+        await Answer.findByIdAndUpdate(req.params.id, {
+          $addToSet: { downvotedBy: userId }
+        })
+      }
+    } else if (value === 0) {
+      await Answer.findByIdAndUpdate(req.params.id, {
+        $pull: { upvotedBy: userId, downvotedBy: userId }
+      })
+    }
+
+    let vote
+    try {
+      vote = await Vote.findOneAndUpdate(
+        {
+          user: req.user.id,
+          answer: req.params.id,
+        },
+        { value },
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true,
+          runValidators: true,
+        },
+      )
+    } catch (duplicateError) {
+      if (duplicateError.code === 11000) {
+        const existingVote = await Vote.findOne({
+          user: req.user.id,
+          answer: req.params.id,
+        })
+
+        if (existingVote) {
+          existingVote.value = value
+          await existingVote.save()
+        } else if (value !== 0) {
+          await Vote.create({
+            user: req.user.id,
+            answer: req.params.id,
+            value
+          })
+        } else {
+          return res.status(409).json({
+            message: "Vote conflict detected. Please refresh and try again.",
+          })
+        }
+      } else {
+        throw duplicateError
+      }
+    }
+
+    const voteDiff = value - oldValue
+
+    if (voteDiff !== 0) {
+      User.findById(answer.author)
+        .then((author) => {
+          if (author) {
+            let repChange = 0
+
+            if (voteDiff > 0) {
+              repChange = voteDiff === 1 ? (oldValue === -1 ? 12 : 10) : voteDiff === 2 ? 12 : voteDiff * 10
+            } else if (voteDiff < 0) {
+              repChange = voteDiff === -1 ? (oldValue === 1 ? -12 : -2) : voteDiff === -2 ? -12 : voteDiff * 2
+            }
+
+            if (repChange !== 0) {
+              author.reputation += repChange
+              return author.save()
+            }
+          }
+        })
+        .catch((err) => console.error("Error updating reputation:", err))
+    }
+
+    clearCache(`/api/questions/${answer.question}/answers`)
+
+    const updatedAnswer = await Answer.findById(req.params.id)
+    res.json({ vote, answer: updatedAnswer })
+  } catch (error) {
+    if (error.code === 11000) {
+      res.status(409).json({
+        message: "Duplicate vote detected. Please refresh the page and try again.",
+      })
+    } else {
+      res.status(500).json({ message: error.message })
+    }
   }
 })
 
 router.post("/:id/accept", auth, async (req, res) => {
-  const session = await mongoose.startSession()
-
   try {
-    const result = await session.withTransaction(async () => {
-      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        throw new Error("Invalid answer ID")
-      }
+    const answer = await Answer.findById(req.params.id)
+    if (!answer) {
+      return res.status(404).json({ message: "Answer not found" })
+    }
 
-      const answer = await Answer.findById(req.params.id).session(session)
-      if (!answer) {
-        throw new Error("Answer not found")
-      }
+    const question = await Question.findById(answer.question)
+    if (!question) {
+      return res.status(404).json({ message: "Question not found" })
+    }
 
-      const question = await Question.findById(answer.question).session(session)
-      if (!question) {
-        throw new Error("Question not found")
-      }
+    if (question.author.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Only the question author can accept answers" })
+    }
 
-      if (question.author.toString() !== req.user.id) {
-        throw new Error("Only the question author can accept answers")
-      }
+    const [previousAccepted] = await Promise.all([
+      question.acceptedAnswer ? Answer.findByIdAndUpdate(question.acceptedAnswer, { isAccepted: false }) : null,
 
-      if (question.acceptedAnswer && question.acceptedAnswer.toString() !== req.params.id) {
-        await Answer.findByIdAndUpdate(question.acceptedAnswer, { isAccepted: false }, { session })
-      }
+      Answer.findByIdAndUpdate(answer._id, { isAccepted: true }, { new: true }),
 
-      await Answer.findByIdAndUpdate(answer._id, { isAccepted: true }, { session })
+      Question.findByIdAndUpdate(question._id, { acceptedAnswer: answer._id, isSolved: true }, { new: true }),
+    ])
 
-      await Question.findByIdAndUpdate(question._id, { acceptedAnswer: answer._id, isSolved: true }, { session })
+    User.findById(answer.author)
+      .then((author) => {
+        if (author) {
+          author.reputation += 15
 
-      const author = await User.findById(answer.author).session(session)
-      if (author) {
-        author.reputation += 15
+          if (!author.badges.includes("Problem Solver") && author.reputation >= 100) {
+            author.badges.push("Problem Solver")
+          }
 
-        if (!author.badges?.includes("Problem Solver") && author.reputation >= 100) {
-          if (!author.badges) author.badges = []
-          author.badges.push("Problem Solver")
+          return author.save()
         }
+      })
+      .catch((err) => console.error("Error updating reputation:", err))
 
-        await author.save({ session })
-      }
-
-      return {
-        answerId: answer._id,
-        questionId: question._id,
-      }
-    })
-
-    clearCache(`/api/questions/${result.questionId}`)
-    clearCache(`/api/questions/${result.questionId}/answers`)
+    clearCache(`/api/questions/${question._id}`)
+    clearCache(`/api/questions/${question._id}/answers`)
 
     res.json({
       message: "Answer accepted successfully",
-      answerId: result.answerId,
-      questionId: result.questionId,
+      answerId: answer._id,
+      questionId: question._id,
     })
   } catch (error) {
-    console.error("Accept answer error:", error)
-
-    let statusCode = 500
-    let message = "Failed to accept answer"
-
-    if (error.message.includes("Invalid answer ID")) {
-      statusCode = 400
-      message = error.message
-    } else if (error.message === "Answer not found") {
-      statusCode = 404
-      message = error.message
-    } else if (error.message === "Question not found") {
-      statusCode = 404
-      message = error.message
-    } else if (error.message.includes("Only the question author")) {
-      statusCode = 403
-      message = error.message
-    }
-
-    res.status(statusCode).json({ message })
-  } finally {
-    await session.endSession()
+    res.status(500).json({ message: error.message })
   }
 })
 

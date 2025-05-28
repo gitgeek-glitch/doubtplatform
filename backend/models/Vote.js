@@ -14,7 +14,7 @@ const voteSchema = new mongoose.Schema(
     },
     value: {
       type: Number,
-      enum: [-1, 1],
+      enum: [-1, 0, 1],
       required: true,
     },
   },

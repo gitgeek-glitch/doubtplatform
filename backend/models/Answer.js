@@ -18,14 +18,14 @@ const answerSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    upvotes: {
-      type: Number,
-      default: 0,
-    },
-    downvotes: {
-      type: Number,
-      default: 0,
-    },
+    upvotedBy: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }],
+    downvotedBy: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }],
     isAccepted: {
       type: Boolean,
       default: false,
@@ -35,6 +35,17 @@ const answerSchema = new mongoose.Schema(
     timestamps: true,
   },
 )
+
+answerSchema.virtual("upvotes").get(function() {
+  return this.upvotedBy.length
+})
+
+answerSchema.virtual("downvotes").get(function() {
+  return this.downvotedBy.length
+})
+
+answerSchema.set("toJSON", { virtuals: true })
+answerSchema.set("toObject", { virtuals: true })
 
 const Answer = mongoose.model("Answer", answerSchema)
 
