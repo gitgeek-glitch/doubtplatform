@@ -1,14 +1,12 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState, useRef, useCallback } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import {
   fetchQuestionDetails,
   fetchVotes,
-  // voteQuestion,
   voteAnswer,
   acceptAnswer,
   submitAnswer,
@@ -22,14 +20,12 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowUp, ArrowDown, MessageSquare, Check, Share2, RefreshCw, Trash2, AlertTriangle } from "lucide-react"
+import { ThumbsUp, ThumbsDown, MessageSquare, Check, Share2, RefreshCw, Trash2, AlertTriangle } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import MarkdownRenderer from "@/components/markdown-renderer"
 import debounce from "lodash/debounce"
-
-// Import the useContentModeration hook at the top of the file
 import { useContentModeration } from "@/hooks/use-content-moderation"
 
 export default function QuestionDetailPage() {
@@ -42,7 +38,6 @@ export default function QuestionDetailPage() {
     answers,
     relatedQuestions,
     loading,
-    // questionVote,
     answerVotes,
   } = useAppSelector((state) => state.questions)
   const [answerContent, setAnswerContent] = useState("")
@@ -51,16 +46,13 @@ export default function QuestionDetailPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isDeletingQuestion, setIsDeletingQuestion] = useState(false)
   const [deletingAnswerId, setDeletingAnswerId] = useState<string | null>(null)
+  const [votingAnswers, setVotingAnswers] = useState<Set<string>>(new Set())
   const lastFetchTimeRef = useRef<number>(0)
   const stableToast = useRef(toast)
   const fetchingRef = useRef<boolean>(false)
   const navigate = useNavigate()
-
-  // Add the useContentModeration hook inside the component
-  // Add this after the other hooks
   const { checkContent, isChecking } = useContentModeration()
 
-  // Fetch question details on mount with cache busting
   const fetchQuestionWithDetails = useCallback(
     (forceRefresh = false) => {
       if (!id || fetchingRef.current) return
@@ -91,8 +83,7 @@ export default function QuestionDetailPage() {
             }
             fetchingRef.current = false
           })
-          .catch((error) => {
-            console.error("Error fetching question details:", error)
+          .catch(() => {
             if (forceRefresh) {
               setIsRefreshing(false)
               stableToast.current({
@@ -105,10 +96,9 @@ export default function QuestionDetailPage() {
           })
       }
     },
-    [id, isAuthenticated, dispatch], // ❌ removed `toast`
+    [id, isAuthenticated, dispatch],
   )
 
-  // Initial fetch on mount
   useEffect(() => {
     if (id) {
       fetchQuestionWithDetails(true)
@@ -122,36 +112,30 @@ export default function QuestionDetailPage() {
     }
   }, [id, dispatch, fetchQuestionWithDetails])
 
-  // Set up polling for new answers
   useEffect(() => {
     if (!id) return
 
-    // Clear existing interval if any
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current)
     }
 
-    // Set polling interval
     const interval = setInterval(() => {
       fetchQuestionWithDetails(false)
     }, 60000)
 
     refreshIntervalRef.current = interval
 
-    // Cleanup on unmount
     return () => {
       clearInterval(interval)
     }
   }, [id, fetchQuestionWithDetails])
 
-  // Refresh answers when window regains focus, but with throttling
   useEffect(() => {
     if (!id) return
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         const now = Date.now()
-        // Only refresh if it's been at least 30 seconds since last fetch
         if (now - lastFetchTimeRef.current > 30000) {
           fetchQuestionWithDetails(false)
         }
@@ -160,52 +144,21 @@ export default function QuestionDetailPage() {
 
     document.addEventListener("visibilitychange", handleVisibilityChange)
 
-    // Clean up event listener on unmount
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
   }, [id, fetchQuestionWithDetails])
 
-  // Handle manual refresh with debounce
   const handleRefresh = debounce(() => {
     const now = Date.now()
-    // Only allow refresh if it's been at least 5 seconds since last refresh
     if (now - lastFetchTimeRef.current > 5000) {
       fetchQuestionWithDetails(true)
     } else {
-      // If trying to refresh too soon, show a brief "refreshing" state
       setIsRefreshing(true)
       setTimeout(() => setIsRefreshing(false), 500)
     }
   }, 500)
 
-  // Handle question vote
-  // const handleQuestionVote = async (value: number) => {
-  //   if (!isAuthenticated) {
-  //     toast({
-  //       title: "Authentication required",
-  //       description: "Please sign in to vote",
-  //       variant: "destructive",
-  //     })
-  //     return
-  //   }
-
-  //   if (!id) return
-
-  //   try {
-  //     // If user already voted the same way, remove the vote
-  //     const finalValue = questionVote === value ? 0 : value
-  //     await dispatch(voteQuestion({ questionId: id, value: finalValue })).unwrap()
-  //   } catch (error) {
-  //     toast({
-  //       title: "Error",
-  //       description: "Failed to register your vote",
-  //       variant: "destructive",
-  //     })
-  //   }
-  // }
-
-  // Handle answer vote
   const handleAnswerVote = async (answerId: string, value: number) => {
     if (!isAuthenticated) {
       toast({
@@ -216,22 +169,50 @@ export default function QuestionDetailPage() {
       return
     }
 
+    if (votingAnswers.has(answerId)) {
+      return
+    }
+
     try {
+      setVotingAnswers((prev) => new Set(prev).add(answerId))
+
       const currentVote = answerVotes[answerId] || 0
-      // If user already voted the same way, remove the vote
       const finalValue = currentVote === value ? 0 : value
 
       await dispatch(voteAnswer({ answerId, value: finalValue })).unwrap()
-    } catch (error) {
+
       toast({
-        title: "Error",
-        description: "Failed to register your vote",
-        variant: "destructive",
+        title: "Vote registered",
+        description: "Your vote has been recorded",
       })
+    } catch (error: any) {
+      if (error.includes("409") || error.includes("Duplicate")) {
+        toast({
+          title: "Vote conflict",
+          description: "Please refresh the page and try again",
+          variant: "destructive",
+        })
+        setTimeout(() => {
+          fetchQuestionWithDetails(true)
+        }, 1000)
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to register your vote",
+          variant: "destructive",
+        })
+      }
+    } finally {
+      setTimeout(() => {
+        setVotingAnswers((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(answerId)
+          return newSet
+        })
+      }, 1000)
     }
   }
 
-  // Handle accept answer
   const handleAcceptAnswer = async (answerId: string) => {
     if (!isAuthenticated || !question || user?._id !== question.author._id) {
       toast({
@@ -250,7 +231,6 @@ export default function QuestionDetailPage() {
         description: "You've marked this answer as accepted",
       })
 
-      // Refresh question details to ensure UI is up to date
       fetchQuestionWithDetails(true)
     } catch (error) {
       toast({
@@ -261,8 +241,6 @@ export default function QuestionDetailPage() {
     }
   }
 
-  // Update the handleSubmitAnswer function to check content before submission
-  // Replace the existing handleSubmitAnswer function with this one
   const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -275,7 +253,6 @@ export default function QuestionDetailPage() {
       return
     }
 
-    // Check if answer content is empty
     if (!answerContent.trim()) {
       toast({
         title: "Empty answer",
@@ -285,7 +262,6 @@ export default function QuestionDetailPage() {
       return
     }
 
-    // Add validation for minimum answer length (20 characters)
     if (answerContent.trim().length < 20) {
       toast({
         title: "Answer too short",
@@ -295,7 +271,6 @@ export default function QuestionDetailPage() {
       return
     }
 
-    // Check content for inappropriate language
     const isContentAppropriate = await checkContent(answerContent)
     if (!isContentAppropriate) return
 
@@ -311,7 +286,6 @@ export default function QuestionDetailPage() {
         description: "Your answer has been posted successfully",
       })
 
-      // Refresh question details to show the new answer
       fetchQuestionWithDetails(true)
     } catch (error) {
       toast({
@@ -324,7 +298,6 @@ export default function QuestionDetailPage() {
     }
   }
 
-  // Handle share question
   const handleShareQuestion = () => {
     navigator.clipboard.writeText(window.location.href)
     toast({
@@ -333,7 +306,6 @@ export default function QuestionDetailPage() {
     })
   }
 
-  // Handle delete question
   const handleDeleteQuestion = async () => {
     if (!isAuthenticated || !question || user?._id !== question.author._id) {
       toast({
@@ -345,7 +317,6 @@ export default function QuestionDetailPage() {
     }
 
     try {
-      // Confirm deletion
       if (!window.confirm("Are you sure you want to delete this question? This action cannot be undone.")) {
         return
       }
@@ -360,7 +331,6 @@ export default function QuestionDetailPage() {
           description: "Your question has been deleted successfully",
         })
 
-        // Navigate back to home page
         navigate("/")
       } else {
         toast({
@@ -380,7 +350,6 @@ export default function QuestionDetailPage() {
     }
   }
 
-  // Handle delete answer
   const handleDeleteAnswer = async (answerId: string) => {
     if (!isAuthenticated) {
       toast({
@@ -391,7 +360,6 @@ export default function QuestionDetailPage() {
       return
     }
 
-    // Check if user is either the answer author or the question author
     const answer = answers.find((a) => a._id === answerId)
     if (!answer || (user?._id !== answer.author._id && user?._id !== question?.author._id)) {
       toast({
@@ -403,7 +371,6 @@ export default function QuestionDetailPage() {
     }
 
     try {
-      // Confirm deletion
       if (!window.confirm("Are you sure you want to delete this answer? This action cannot be undone.")) {
         return
       }
@@ -418,7 +385,6 @@ export default function QuestionDetailPage() {
           description: "The answer has been deleted successfully",
         })
 
-        // Refresh question details to update the UI
         fetchQuestionWithDetails(true)
       } else {
         toast({
@@ -483,7 +449,6 @@ export default function QuestionDetailPage() {
     )
   }
 
-  // Sort answers: accepted first, then by votes
   const sortedAnswers = [...answers].sort((a, b) => {
     if (a.isAccepted && !b.isAccepted) return -1
     if (!a.isAccepted && b.isAccepted) return 1
@@ -493,7 +458,6 @@ export default function QuestionDetailPage() {
   return (
     <div className="question-detail-grid">
       <div className="question-detail-main">
-        {/* Question */}
         <div className="space-y-6">
           <div className="question-detail-header">
             <h1 className="question-detail-title">{question.title}</h1>
@@ -538,26 +502,6 @@ export default function QuestionDetailPage() {
           </div>
 
           <div className="flex gap-6">
-            {/* <div className="question-detail-vote-container">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn("question-detail-vote-button", questionVote === 1 && "question-detail-vote-up")}
-                onClick={() => handleQuestionVote(1)}
-              >
-                <ArrowUp className="h-6 w-6" />
-              </Button>
-              <span className="question-detail-vote-count">{question.upvotes - question.downvotes}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn("question-detail-vote-button", questionVote === -1 && "question-detail-vote-down")}
-                onClick={() => handleQuestionVote(-1)}
-              >
-                <ArrowDown className="h-6 w-6" />
-              </Button>
-            </div> */}
-
             <div className="question-detail-content">
               <div className="prose prose-invert max-w-none">
                 <MarkdownRenderer content={question.content} />
@@ -585,7 +529,6 @@ export default function QuestionDetailPage() {
 
         <Separator className="bg-gray-800" />
 
-        {/* Answers */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="question-detail-answers-header">
@@ -608,69 +551,75 @@ export default function QuestionDetailPage() {
                   className={cn("question-detail-answer", answer.isAccepted && "question-detail-answer-accepted")}
                 >
                   <div className="flex gap-6">
-                    <div className="question-detail-vote-container">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          "question-detail-vote-button",
-                          answerVotes[answer._id] === 1 && "question-detail-vote-up",
-                        )}
-                        onClick={() => handleAnswerVote(answer._id, 1)}
-                      >
-                        <ArrowUp className="h-6 w-6" />
-                      </Button>
-                      <span className="question-detail-vote-count">{answer.upvotes - answer.downvotes}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          "question-detail-vote-button",
-                          answerVotes[answer._id] === -1 && "question-detail-vote-down",
-                        )}
-                        onClick={() => handleAnswerVote(answer._id, -1)}
-                      >
-                        <ArrowDown className="h-6 w-6" />
-                      </Button>
-
-                      {answer.isAccepted ? (
-                        <div className="question-detail-accepted-indicator">
-                          <Check className="h-6 w-6" />
-                          <span className="text-xs">Accepted</span>
-                        </div>
-                      ) : (
-                        user?._id === question.author._id && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="question-detail-accept-button"
-                            onClick={() => handleAcceptAnswer(answer._id)}
-                          >
-                            <Check className="h-5 w-5" />
-                          </Button>
-                        )
-                      )}
-                    </div>
-
                     <div className="question-detail-content">
                       <div className="prose prose-invert max-w-none">
                         <MarkdownRenderer content={answer.content} />
                       </div>
 
-                      <div className="question-detail-author">
-                        <div className="question-detail-author-card">
-                          <div className="question-detail-author-info">
-                            <p className="text-muted-foreground">
-                              Answered {formatDistanceToNow(new Date(answer.createdAt), { addSuffix: true })}
-                            </p>
-                            <Link to={`/profile/${answer.author._id}`} className="question-detail-author-link">
-                              {answer.author.name}
-                            </Link>
+                      <div className="flex items-center justify-between mt-4">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={cn(
+                                "h-8 w-8 p-0",
+                                answerVotes[answer._id] === 1 && "text-green-500 hover:text-green-400",
+                                votingAnswers.has(answer._id) && "opacity-50 cursor-not-allowed",
+                              )}
+                              onClick={() => handleAnswerVote(answer._id, 1)}
+                              disabled={votingAnswers.has(answer._id)}
+                            >
+                              <ThumbsUp className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm font-medium">{answer.upvotes - answer.downvotes}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={cn(
+                                "h-8 w-8 p-0",
+                                answerVotes[answer._id] === -1 && "text-red-500 hover:text-red-400",
+                                votingAnswers.has(answer._id) && "opacity-50 cursor-not-allowed",
+                              )}
+                              onClick={() => handleAnswerVote(answer._id, -1)}
+                              disabled={votingAnswers.has(answer._id)}
+                            >
+                              <ThumbsDown className="h-4 w-4" />
+                            </Button>
+                            {answer.isAccepted ? (
+                              <div className="flex items-center text-green-500">
+                                <Check className="h-4 w-4" />
+                              </div>
+                            ) : (
+                              user?._id === question.author._id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-gray-400 hover:text-green-500"
+                                  onClick={() => handleAcceptAnswer(answer._id)}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                              )
+                            )}
                           </div>
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={answer.author.avatar || "/placeholder.svg"} alt={answer.author.name} />
-                            <AvatarFallback>{answer.author.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
+                        </div>
+
+                        <div className="question-detail-author">
+                          <div className="question-detail-author-card">
+                            <div className="question-detail-author-info">
+                              <p className="text-muted-foreground">
+                                Answered {formatDistanceToNow(new Date(answer.createdAt), { addSuffix: true })}
+                              </p>
+                              <Link to={`/profile/${answer.author._id}`} className="question-detail-author-link">
+                                {answer.author.name}
+                              </Link>
+                            </div>
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={answer.author.avatar || "/placeholder.svg"} alt={answer.author.name} />
+                              <AvatarFallback>{answer.author.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                          </div>
                         </div>
                       </div>
 
@@ -700,7 +649,6 @@ export default function QuestionDetailPage() {
           )}
         </div>
 
-        {/* Answer form */}
         <div className="question-detail-answer-form">
           <h3 className="text-xl font-semibold">Your Answer</h3>
 
@@ -712,8 +660,6 @@ export default function QuestionDetailPage() {
           />
 
           <div className="flex justify-end">
-            {/* Update the Button in the answer form to show loading state when checking content
-            Find the submit button in the answer form and replace it with: */}
             <Button
               className="ask-question-submit"
               disabled={submitting || !isAuthenticated || !answerContent.trim() || isChecking}
@@ -734,7 +680,6 @@ export default function QuestionDetailPage() {
         </div>
       </div>
 
-      {/* Sidebar */}
       <div className="question-detail-sidebar">
         <div className="question-detail-sidebar-card">
           <h3 className="question-detail-sidebar-title">Related Questions</h3>
@@ -746,9 +691,6 @@ export default function QuestionDetailPage() {
                     {q.title}
                   </Link>
                   <div className="question-detail-related-meta">
-                    {/* <Badge variant="outline" className="text-xs">
-                      {q.upvotes - q.downvotes} votes
-                    </Badge> */}
                     <span className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(q.createdAt), { addSuffix: true })}
                     </span>

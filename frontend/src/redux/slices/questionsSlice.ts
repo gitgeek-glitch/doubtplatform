@@ -194,10 +194,11 @@ export const voteAnswer = createAsyncThunk(
   "questions/voteAnswer",
   async ({ answerId, value }: { answerId: string; value: number }, { rejectWithValue }) => {
     try {
-      await api.post(`/answers/${answerId}/vote`, { value })
-      return { answerId, value }
+      const response = await api.post(`/answers/${answerId}/vote`, { value })
+      return { answerId, value, answer: response.data.answer }
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to vote on answer")
+      const errorMessage = error.response?.data?.message || error.message || "Failed to vote on answer"
+      return rejectWithValue(errorMessage)
     }
   },
 )
@@ -387,23 +388,13 @@ const questionsSlice = createSlice({
       })
 
       .addCase(voteAnswer.fulfilled, (state, action) => {
-        const { answerId, value } = action.payload
-        const currentVote = state.answerVotes[answerId] || 0
+        const { answerId, value, answer } = action.payload
 
-        state.answers = state.answers.map((answer) => {
-          if (answer._id === answerId) {
-            const updatedAnswer = { ...answer }
-
-            if (currentVote === 1) updatedAnswer.upvotes--
-            if (currentVote === -1) updatedAnswer.downvotes--
-
-            if (value === 1) updatedAnswer.upvotes++
-            if (value === -1) updatedAnswer.downvotes++
-
-            return updatedAnswer
-          }
-          return answer
-        })
+        if (answer) {
+          state.answers = state.answers.map((a) =>
+            a._id === answerId ? { ...a, upvotes: answer.upvotes, downvotes: answer.downvotes } : a,
+          )
+        }
 
         state.answerVotes = {
           ...state.answerVotes,

@@ -26,9 +26,41 @@ const voteSchema = new mongoose.Schema(
   },
 )
 
-// Ensure a user can only vote once per question or answer
-voteSchema.index({ user: 1, question: 1 }, { unique: true, sparse: true })
-voteSchema.index({ user: 1, answer: 1 }, { unique: true, sparse: true })
+voteSchema.index(
+  { user: 1, question: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      question: { $exists: true, $ne: null },
+      answer: { $exists: false },
+    },
+  },
+)
+
+voteSchema.index(
+  { user: 1, answer: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      answer: { $exists: true, $ne: null },
+      question: { $exists: false },
+    },
+  },
+)
+
+voteSchema.pre("save", function (next) {
+  if (this.question && this.answer) {
+    const err = new Error("Vote cannot be for both question and answer")
+    return next(err)
+  }
+
+  if (!this.question && !this.answer) {
+    const err = new Error("Vote must be for either a question or an answer")
+    return next(err)
+  }
+
+  next()
+})
 
 const Vote = mongoose.model("Vote", voteSchema)
 
