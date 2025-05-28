@@ -164,56 +164,55 @@ export default function QuestionDetailPage() {
   }, 500)
 
   const handleAnswerVote = async (answerId: string, value: number) => {
-  if (!isAuthenticated) {
-    toast({
-      title: "Authentication required",
-      description: "Please sign in to vote",
-      variant: "destructive",
-    })
-    return
-  }
-
-  if (votingAnswers.has(answerId)) {
-    return
-  }
-
-  try {
-    setVotingAnswers((prev) => new Set(prev).add(answerId))
-
-    const currentVote = typeof answerVotes[answerId] === "number" ? answerVotes[answerId] : 0
-    const finalValue = currentVote === value ? 0 : value;
-
-    await dispatch(voteAnswer({ answerId, value: finalValue })).unwrap();
-
-    toast({
-      title: "Vote registered",
-      description: "Your vote has been recorded",
-    })
-  } catch (error: any) {
-    // Fix: Check status code properly
-    const status = error?.status || error?.code
-    const errorMessage = error?.message || error || "Unknown error"
-
-    if (status === 409) {
-      fetchQuestionWithDetails(true)
-      return
-    } else {
+    if (!isAuthenticated) {
       toast({
-        title: "Error",
-        description: errorMessage,
+        title: "Authentication required",
+        description: "Please sign in to vote",
         variant: "destructive",
       })
+      return
     }
-  } finally {
-    setTimeout(() => {
-      setVotingAnswers((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(answerId)
-        return newSet
+
+    if (votingAnswers.has(answerId)) {
+      return
+    }
+
+    try {
+      setVotingAnswers((prev) => new Set(prev).add(answerId))
+
+      const currentVote = answerVotes[answerId] || 0
+      const finalValue = currentVote === value ? 0 : value
+
+      await dispatch(voteAnswer({ answerId, value: finalValue })).unwrap()
+
+      toast({
+        title: "Vote registered",
+        description: "Your vote has been recorded",
       })
-    }, 1000)
+    } catch (error: any) {
+      const status = error?.status || error?.code
+      const errorMessage = error?.message || error || "Unknown error"
+
+      if (status === 409) {
+        fetchQuestionWithDetails(true)
+        return
+      } else {
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
+    } finally {
+      setTimeout(() => {
+        setVotingAnswers((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(answerId)
+          return newSet
+        })
+      }, 1000)
+    }
   }
-}
 
   const handleAcceptAnswer = async (answerId: string) => {
     if (!isAuthenticated || !question || user?._id !== question.author._id) {
@@ -552,105 +551,111 @@ export default function QuestionDetailPage() {
 
             {sortedAnswers.length > 0 ? (
               <div className="space-y-8">
-                {sortedAnswers.map((answer) => (
-                  <div
-                    key={answer._id}
-                    className={cn("question-detail-answer", answer.isAccepted && "question-detail-answer-accepted")}
-                  >
-                    <div className="flex gap-6">
-                      <div className="question-detail-content">
-                        <div className="prose prose-invert max-w-none">
-                          <MarkdownRenderer content={answer.content} />
-                        </div>
+                {sortedAnswers.map((answer) => {
+                  const currentUserVote = answerVotes[answer._id] || 0
+                  const netVotes = (answer.upvotes || 0) - (answer.downvotes || 0)
+                  
+                  return (
+                    <div
+                      key={answer._id}
+                      className={cn("question-detail-answer", answer.isAccepted && "question-detail-answer-accepted")}
+                    >
+                      <div className="flex gap-6">
+                        <div className="question-detail-content">
+                          <div className="prose prose-invert max-w-none">
+                            <MarkdownRenderer content={answer.content} />
+                          </div>
 
-                        <div className="flex items-center justify-between mt-4">
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                  "h-8 w-8 p-0",
-                                  answerVotes[answer._id] === 1 && "text-green-500 hover:text-green-400",
-                                  votingAnswers.has(answer._id) && "opacity-50 cursor-not-allowed",
-                                )}
-                                onClick={() => handleAnswerVote(answer._id, 1)}
-                                disabled={votingAnswers.has(answer._id)}
-                              >
-                                <ThumbsUp className="h-4 w-4" />
-                              </Button>
-                              <span className="text-sm font-medium">{(answer.upvotes || 0) - (answer.downvotes || 0)}</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                  "h-8 w-8 p-0",
-                                  answerVotes[answer._id] === -1 && "text-red-500 hover:text-red-400",
-                                  votingAnswers.has(answer._id) && "opacity-50 cursor-not-allowed",
-                                )}
-                                onClick={() => handleAnswerVote(answer._id, -1)}
-                                disabled={votingAnswers.has(answer._id)}
-                              >
-                                <ThumbsDown className="h-4 w-4" />
-                              </Button>
-                              {answer.isAccepted ? (
-                                <div className="flex items-center text-green-500">
-                                  <Check className="h-4 w-4" />
-                                </div>
-                              ) : (
-                                user?._id === question.author._id && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-gray-400 hover:text-green-500"
-                                    onClick={() => handleAcceptAnswer(answer._id)}
-                                  >
+                          <div className="flex items-center justify-between mt-4">
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={cn(
+                                    "h-8 w-8 p-0",
+                                    currentUserVote === 1 && "text-green-500 hover:text-green-400",
+                                    votingAnswers.has(answer._id) && "opacity-50 cursor-not-allowed",
+                                  )}
+                                  onClick={() => handleAnswerVote(answer._id, 1)}
+                                  disabled={votingAnswers.has(answer._id)}
+                                >
+                                  <ThumbsUp className="h-4 w-4" />
+                                </Button>
+                                <span className="text-sm font-medium min-w-[2rem] text-center">{netVotes}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={cn(
+                                    "h-8 w-8 p-0",
+                                    currentUserVote === -1 && "text-red-500 hover:text-red-400",
+                                    votingAnswers.has(answer._id) && "opacity-50 cursor-not-allowed",
+                                  )}
+                                  onClick={() => handleAnswerVote(answer._id, -1)}
+                                  disabled={votingAnswers.has(answer._id)}
+                                >
+                                  <ThumbsDown className="h-4 w-4" />
+                                </Button>
+                                {answer.isAccepted ? (
+                                  <div className="flex items-center text-green-500">
                                     <Check className="h-4 w-4" />
-                                  </Button>
-                                )
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="question-detail-author">
-                            <div className="question-detail-author-card">
-                              <div className="question-detail-author-info">
-                                <p className="text-muted-foreground">
-                                  Answered {formatDistanceToNow(new Date(answer.createdAt), { addSuffix: true })}
-                                </p>
-                                <Link to={`/profile/${answer.author._id}`} className="question-detail-author-link">
-                                  {answer.author.name}
-                                </Link>
+                                  </div>
+                                ) : (
+                                  isAuthenticated && user?._id === question.author._id && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-gray-400 hover:text-green-500"
+                                      onClick={() => handleAcceptAnswer(answer._id)}
+                                      title="Accept this answer"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </Button>
+                                  )
+                                )}
                               </div>
-                              <Avatar className="h-10 w-10">
-                                <AvatarImage
-                                  src={answer.author.avatar || "/placeholder.svg"}
-                                  alt={answer.author.name}
-                                />
-                                <AvatarFallback>{answer.author.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
+                            </div>
+
+                            <div className="question-detail-author">
+                              <div className="question-detail-author-card">
+                                <div className="question-detail-author-info">
+                                  <p className="text-muted-foreground">
+                                    Answered {formatDistanceToNow(new Date(answer.createdAt), { addSuffix: true })}
+                                  </p>
+                                  <Link to={`/profile/${answer.author._id}`} className="question-detail-author-link">
+                                    {answer.author.name}
+                                  </Link>
+                                </div>
+                                <Avatar className="h-10 w-10">
+                                  <AvatarImage
+                                    src={answer.author.avatar || "/placeholder.svg"}
+                                    alt={answer.author.name}
+                                  />
+                                  <AvatarFallback>{answer.author.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {isAuthenticated && (user?._id === answer.author._id || user?._id === question.author._id) && (
-                          <div className="flex justify-end mt-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20 flex items-center gap-1"
-                              onClick={() => openDeleteAnswerDialog(answer._id)}
-                              disabled={deletingAnswerId === answer._id}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              {deletingAnswerId === answer._id ? "Deleting..." : "Delete"}
-                            </Button>
-                          </div>
-                        )}
+                          {isAuthenticated && (user?._id === answer.author._id || user?._id === question.author._id) && (
+                            <div className="flex justify-end mt-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-400 hover:text-red-300 hover:bg-red-900/20 flex items-center gap-1"
+                                onClick={() => openDeleteAnswerDialog(answer._id)}
+                                disabled={deletingAnswerId === answer._id}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                {deletingAnswerId === answer._id ? "Deleting..." : "Delete"}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div className="question-detail-no-answers">
