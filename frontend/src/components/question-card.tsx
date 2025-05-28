@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useAppSelector, useAppDispatch } from "@/redux/hooks"
@@ -10,12 +9,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-// import { ThumbsUp, ThumbsDown, Trash2 } from "lucide-react"
 import { Trash2 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
-// import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-// import { api } from "@/lib/api"
 import { ConfirmationDialog } from "@/components/confirmation-dialog"
 
 interface QuestionCardProps {
@@ -24,8 +20,6 @@ interface QuestionCardProps {
     title: string
     content: string
     tags: string[]
-    // upvotes: number
-    // downvotes: number
     answerCount: number
     viewCount?: number
     author: {
@@ -41,57 +35,8 @@ export default function QuestionCard({ question }: QuestionCardProps) {
   const dispatch = useAppDispatch()
   const { isAuthenticated, user } = useAppSelector((state) => state.auth)
   const { toast } = useToast()
-  // const [votes, setVotes] = useState({
-  //   upvotes: question.upvotes,
-  //   downvotes: question.downvotes,
-  //   userVote: 0, // 0: no vote, 1: upvote, -1: downvote
-  // })
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
-
-  // const handleVote = async (voteType: "up" | "down") => {
-  //   if (!isAuthenticated) {
-  //     toast({
-  //       title: "Authentication required",
-  //       description: "Please sign in to vote on questions",
-  //       variant: "destructive",
-  //     })
-  //     return
-  //   }
-
-  //   try {
-  //     const newVoteValue = voteType === "up" ? 1 : -1
-  //     // If user already voted the same way, remove the vote
-  //     const finalVoteValue = votes.userVote === newVoteValue ? 0 : newVoteValue
-
-  //     await api.post(`/questions/${question._id}/vote`, { value: finalVoteValue })
-
-  //     setVotes((prev) => {
-  //       // Remove previous vote if any
-  //       let newUpvotes = prev.upvotes
-  //       let newDownvotes = prev.downvotes
-
-  //       if (prev.userVote === 1) newUpvotes--
-  //       if (prev.userVote === -1) newDownvotes--
-
-  //       // Add new vote if not removing
-  //       if (finalVoteValue === 1) newUpvotes++
-  //       if (finalVoteValue === -1) newDownvotes++
-
-  //       return {
-  //         upvotes: newUpvotes,
-  //         downvotes: newDownvotes,
-  //         userVote: finalVoteValue,
-  //       }
-  //     })
-  //   } catch (error) {
-  //     toast({
-  //       title: "Error",
-  //       description: "Failed to register your vote",
-  //       variant: "destructive",
-  //     })
-  //   }
-  // }
 
   const openDeleteConfirmation = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -138,7 +83,6 @@ export default function QuestionCard({ question }: QuestionCardProps) {
     }
   }
 
-  // Truncate content for preview
   const truncatedContent = question.content.length > 150 ? question.content.substring(0, 150) + "..." : question.content
 
   return (
@@ -149,25 +93,6 @@ export default function QuestionCard({ question }: QuestionCardProps) {
             <Link to={`/question/${question._id}`} className="question-card-title">
               {question.title}
             </Link>
-            {/* <div className="flex items-center gap-1 min-w-[100px]">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn("question-card-vote-button", votes.userVote === 1 && "text-green-500")}
-                onClick={() => handleVote("up")}
-              >
-                <ThumbsUp className="h-5 w-5" />
-              </Button>
-              <span className="font-medium text-lg">{votes.upvotes - votes.downvotes}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn("question-card-vote-button", votes.userVote === -1 && "text-red-500")}
-                onClick={() => handleVote("down")}
-              >
-                <ThumbsDown className="h-5 w-5" />
-              </Button>
-            </div> */}
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-0">

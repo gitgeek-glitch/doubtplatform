@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils"
 import MarkdownRenderer from "@/components/markdown-renderer"
 import debounce from "lodash/debounce"
 import { useContentModeration } from "@/hooks/use-content-moderation"
+import { ConfirmationDialog } from "@/components/confirmation-dialog"
 
 export default function QuestionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -52,6 +53,9 @@ export default function QuestionDetailPage() {
   const fetchingRef = useRef<boolean>(false)
   const navigate = useNavigate()
   const { checkContent, isChecking } = useContentModeration()
+  const [showDeleteQuestionDialog, setShowDeleteQuestionDialog] = useState(false)
+  const [showDeleteAnswerDialog, setShowDeleteAnswerDialog] = useState(false)
+  const [answerToDelete, setAnswerToDelete] = useState<string | null>(null)
 
   const fetchQuestionWithDetails = useCallback(
     (forceRefresh = false) => {
@@ -306,7 +310,7 @@ export default function QuestionDetailPage() {
     })
   }
 
-  const handleDeleteQuestion = async () => {
+  const openDeleteQuestionDialog = () => {
     if (!isAuthenticated || !question || user?._id !== question.author._id) {
       toast({
         title: "Not authorized",
@@ -316,11 +320,11 @@ export default function QuestionDetailPage() {
       return
     }
 
-    try {
-      if (!window.confirm("Are you sure you want to delete this question? This action cannot be undone.")) {
-        return
-      }
+    setShowDeleteQuestionDialog(true)
+  }
 
+  const handleDeleteQuestionConfirmed = async () => {
+    try {
       setIsDeletingQuestion(true)
 
       const resultAction = await dispatch(deleteQuestion(id!))
@@ -350,7 +354,7 @@ export default function QuestionDetailPage() {
     }
   }
 
-  const handleDeleteAnswer = async (answerId: string) => {
+  const openDeleteAnswerDialog = (answerId: string) => {
     if (!isAuthenticated) {
       toast({
         title: "Authentication required",
@@ -370,14 +374,17 @@ export default function QuestionDetailPage() {
       return
     }
 
+    setAnswerToDelete(answerId)
+    setShowDeleteAnswerDialog(true)
+  }
+
+  const handleDeleteAnswerConfirmed = async () => {
+    if (!answerToDelete) return
+
     try {
-      if (!window.confirm("Are you sure you want to delete this answer? This action cannot be undone.")) {
-        return
-      }
+      setDeletingAnswerId(answerToDelete)
 
-      setDeletingAnswerId(answerId)
-
-      const resultAction = await dispatch(deleteAnswer(answerId))
+      const resultAction = await dispatch(deleteAnswer(answerToDelete))
 
       if (deleteAnswer.fulfilled.match(resultAction)) {
         toast({
@@ -401,6 +408,7 @@ export default function QuestionDetailPage() {
       })
     } finally {
       setDeletingAnswerId(null)
+      setAnswerToDelete(null)
     }
   }
 
@@ -456,266 +464,296 @@ export default function QuestionDetailPage() {
   })
 
   return (
-    <div className="question-detail-grid">
-      <div className="question-detail-main">
-        <div className="space-y-6">
-          <div className="question-detail-header">
-            <h1 className="question-detail-title">{question.title}</h1>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                title="Refresh question and answers"
-              >
-                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-              </Button>
-              <Button variant="outline" size="sm" className="question-detail-share" onClick={handleShareQuestion}>
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-              {isAuthenticated && user?._id === question.author._id && (
+    <>
+      <div className="question-detail-grid">
+        <div className="question-detail-main">
+          <div className="space-y-6">
+            <div className="question-detail-header">
+              <h1 className="question-detail-title">{question.title}</h1>
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="text-red-400 hover:text-red-300 hover:bg-red-900/20 border-gray-800 flex items-center gap-1"
-                  onClick={handleDeleteQuestion}
-                  disabled={isDeletingQuestion}
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  title="Refresh question and answers"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  {isDeletingQuestion ? "Deleting..." : "Delete"}
+                  <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                </Button>
+                <Button variant="outline" size="sm" className="question-detail-share" onClick={handleShareQuestion}>
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share
+                </Button>
+                {isAuthenticated && user?._id === question.author._id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20 border-gray-800 flex items-center gap-1"
+                    onClick={openDeleteQuestionDialog}
+                    disabled={isDeletingQuestion}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {isDeletingQuestion ? "Deleting..." : "Delete"}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {question.tags.map((tag) => (
+                <Link to={`/?tag=${tag}`} key={tag}>
+                  <Badge variant="outline" className="bg-gray-800/50 hover:bg-gray-800 border-gray-700">
+                    {tag}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+
+            <div className="flex gap-6">
+              <div className="question-detail-content">
+                <div className="prose prose-invert max-w-none">
+                  <MarkdownRenderer content={question.content} />
+                </div>
+
+                <div className="question-detail-author">
+                  <div className="question-detail-author-card">
+                    <div className="question-detail-author-info">
+                      <p className="text-muted-foreground">
+                        Asked {formatDistanceToNow(new Date(question.createdAt), { addSuffix: true })}
+                      </p>
+                      <Link to={`/profile/${question.author._id}`} className="question-detail-author-link">
+                        {question.author.name}
+                      </Link>
+                    </div>
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={question.author.avatar || "/placeholder.svg"} alt={question.author.name} />
+                      <AvatarFallback>{question.author.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Separator className="bg-gray-800" />
+
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="question-detail-answers-header">
+                <MessageSquare className="h-5 w-5" />
+                {answers.length} {answers.length === 1 ? "Answer" : "Answers"}
+              </h2>
+              {answers.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+                  <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
+                  {isRefreshing ? "Refreshing..." : "Refresh"}
                 </Button>
               )}
             </div>
-          </div>
 
-          <div className="flex flex-wrap gap-2">
-            {question.tags.map((tag) => (
-              <Link to={`/?tag=${tag}`} key={tag}>
-                <Badge variant="outline" className="bg-gray-800/50 hover:bg-gray-800 border-gray-700">
-                  {tag}
-                </Badge>
-              </Link>
-            ))}
-          </div>
+            {sortedAnswers.length > 0 ? (
+              <div className="space-y-8">
+                {sortedAnswers.map((answer) => (
+                  <div
+                    key={answer._id}
+                    className={cn("question-detail-answer", answer.isAccepted && "question-detail-answer-accepted")}
+                  >
+                    <div className="flex gap-6">
+                      <div className="question-detail-content">
+                        <div className="prose prose-invert max-w-none">
+                          <MarkdownRenderer content={answer.content} />
+                        </div>
 
-          <div className="flex gap-6">
-            <div className="question-detail-content">
-              <div className="prose prose-invert max-w-none">
-                <MarkdownRenderer content={question.content} />
-              </div>
+                        <div className="flex items-center justify-between mt-4">
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={cn(
+                                  "h-8 w-8 p-0",
+                                  answerVotes[answer._id] === 1 && "text-green-500 hover:text-green-400",
+                                  votingAnswers.has(answer._id) && "opacity-50 cursor-not-allowed",
+                                )}
+                                onClick={() => handleAnswerVote(answer._id, 1)}
+                                disabled={votingAnswers.has(answer._id)}
+                              >
+                                <ThumbsUp className="h-4 w-4" />
+                              </Button>
+                              <span className="text-sm font-medium">{answer.upvotes - answer.downvotes}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={cn(
+                                  "h-8 w-8 p-0",
+                                  answerVotes[answer._id] === -1 && "text-red-500 hover:text-red-400",
+                                  votingAnswers.has(answer._id) && "opacity-50 cursor-not-allowed",
+                                )}
+                                onClick={() => handleAnswerVote(answer._id, -1)}
+                                disabled={votingAnswers.has(answer._id)}
+                              >
+                                <ThumbsDown className="h-4 w-4" />
+                              </Button>
+                              {answer.isAccepted ? (
+                                <div className="flex items-center text-green-500">
+                                  <Check className="h-4 w-4" />
+                                </div>
+                              ) : (
+                                user?._id === question.author._id && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-gray-400 hover:text-green-500"
+                                    onClick={() => handleAcceptAnswer(answer._id)}
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                )
+                              )}
+                            </div>
+                          </div>
 
-              <div className="question-detail-author">
-                <div className="question-detail-author-card">
-                  <div className="question-detail-author-info">
-                    <p className="text-muted-foreground">
-                      Asked {formatDistanceToNow(new Date(question.createdAt), { addSuffix: true })}
-                    </p>
-                    <Link to={`/profile/${question.author._id}`} className="question-detail-author-link">
-                      {question.author.name}
-                    </Link>
+                          <div className="question-detail-author">
+                            <div className="question-detail-author-card">
+                              <div className="question-detail-author-info">
+                                <p className="text-muted-foreground">
+                                  Answered {formatDistanceToNow(new Date(answer.createdAt), { addSuffix: true })}
+                                </p>
+                                <Link to={`/profile/${answer.author._id}`} className="question-detail-author-link">
+                                  {answer.author.name}
+                                </Link>
+                              </div>
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage
+                                  src={answer.author.avatar || "/placeholder.svg"}
+                                  alt={answer.author.name}
+                                />
+                                <AvatarFallback>{answer.author.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                            </div>
+                          </div>
+                        </div>
+
+                        {isAuthenticated && (user?._id === answer.author._id || user?._id === question.author._id) && (
+                          <div className="flex justify-end mt-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20 flex items-center gap-1"
+                              onClick={() => openDeleteAnswerDialog(answer._id)}
+                              disabled={deletingAnswerId === answer._id}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              {deletingAnswerId === answer._id ? "Deleting..." : "Delete"}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={question.author.avatar || "/placeholder.svg"} alt={question.author.name} />
-                    <AvatarFallback>{question.author.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                </div>
+                ))}
               </div>
-            </div>
-          </div>
-        </div>
-
-        <Separator className="bg-gray-800" />
-
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="question-detail-answers-header">
-              <MessageSquare className="h-5 w-5" />
-              {answers.length} {answers.length === 1 ? "Answer" : "Answers"}
-            </h2>
-            {answers.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-                <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
-                {isRefreshing ? "Refreshing..." : "Refresh"}
-              </Button>
+            ) : (
+              <div className="question-detail-no-answers">
+                <p className="text-muted-foreground">No answers yet. Be the first to answer!</p>
+              </div>
             )}
           </div>
 
-          {sortedAnswers.length > 0 ? (
-            <div className="space-y-8">
-              {sortedAnswers.map((answer) => (
-                <div
-                  key={answer._id}
-                  className={cn("question-detail-answer", answer.isAccepted && "question-detail-answer-accepted")}
-                >
-                  <div className="flex gap-6">
-                    <div className="question-detail-content">
-                      <div className="prose prose-invert max-w-none">
-                        <MarkdownRenderer content={answer.content} />
-                      </div>
+          <div className="question-detail-answer-form">
+            <h3 className="text-xl font-semibold">Your Answer</h3>
 
-                      <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={cn(
-                                "h-8 w-8 p-0",
-                                answerVotes[answer._id] === 1 && "text-green-500 hover:text-green-400",
-                                votingAnswers.has(answer._id) && "opacity-50 cursor-not-allowed",
-                              )}
-                              onClick={() => handleAnswerVote(answer._id, 1)}
-                              disabled={votingAnswers.has(answer._id)}
-                            >
-                              <ThumbsUp className="h-4 w-4" />
-                            </Button>
-                            <span className="text-sm font-medium">{answer.upvotes - answer.downvotes}</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={cn(
-                                "h-8 w-8 p-0",
-                                answerVotes[answer._id] === -1 && "text-red-500 hover:text-red-400",
-                                votingAnswers.has(answer._id) && "opacity-50 cursor-not-allowed",
-                              )}
-                              onClick={() => handleAnswerVote(answer._id, -1)}
-                              disabled={votingAnswers.has(answer._id)}
-                            >
-                              <ThumbsDown className="h-4 w-4" />
-                            </Button>
-                            {answer.isAccepted ? (
-                              <div className="flex items-center text-green-500">
-                                <Check className="h-4 w-4" />
-                              </div>
-                            ) : (
-                              user?._id === question.author._id && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-gray-400 hover:text-green-500"
-                                  onClick={() => handleAcceptAnswer(answer._id)}
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                              )
-                            )}
-                          </div>
-                        </div>
+            <Textarea
+              placeholder="Write your answer here... (Markdown supported)"
+              className="question-detail-answer-textarea"
+              value={answerContent}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setAnswerContent(e.target.value)}
+            />
 
-                        <div className="question-detail-author">
-                          <div className="question-detail-author-card">
-                            <div className="question-detail-author-info">
-                              <p className="text-muted-foreground">
-                                Answered {formatDistanceToNow(new Date(answer.createdAt), { addSuffix: true })}
-                              </p>
-                              <Link to={`/profile/${answer.author._id}`} className="question-detail-author-link">
-                                {answer.author.name}
-                              </Link>
-                            </div>
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={answer.author.avatar || "/placeholder.svg"} alt={answer.author.name} />
-                              <AvatarFallback>{answer.author.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                          </div>
-                        </div>
-                      </div>
+            <div className="flex justify-end">
+              <Button
+                className="ask-question-submit"
+                disabled={submitting || !isAuthenticated || !answerContent.trim() || isChecking}
+                onClick={handleSubmitAnswer}
+              >
+                {submitting || isChecking ? "Processing..." : "Post Your Answer"}
+              </Button>
+            </div>
 
-                      {isAuthenticated && (user?._id === answer.author._id || user?._id === question.author._id) && (
-                        <div className="flex justify-end mt-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-400 hover:text-red-300 hover:bg-red-900/20 flex items-center gap-1"
-                            onClick={() => handleDeleteAnswer(answer._id)}
-                            disabled={deletingAnswerId === answer._id}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            {deletingAnswerId === answer._id ? "Deleting..." : "Delete"}
-                          </Button>
-                        </div>
-                      )}
+            {!isAuthenticated && (
+              <p className="text-sm text-muted-foreground text-center">
+                <Link to="/auth" className="text-purple-400 hover:underline">
+                  Sign in
+                </Link>{" "}
+                to post an answer
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="question-detail-sidebar">
+          <div className="question-detail-sidebar-card">
+            <h3 className="question-detail-sidebar-title">Related Questions</h3>
+            {relatedQuestions.length > 0 ? (
+              <ul className="question-detail-related-list">
+                {relatedQuestions.map((q) => (
+                  <li key={q._id}>
+                    <Link to={`/question/${q._id}`} className="question-detail-related-link">
+                      {q.title}
+                    </Link>
+                    <div className="question-detail-related-meta">
+                      <span className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(q.createdAt), { addSuffix: true })}
+                      </span>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="question-detail-no-answers">
-              <p className="text-muted-foreground">No answers yet. Be the first to answer!</p>
-            </div>
-          )}
-        </div>
-
-        <div className="question-detail-answer-form">
-          <h3 className="text-xl font-semibold">Your Answer</h3>
-
-          <Textarea
-            placeholder="Write your answer here... (Markdown supported)"
-            className="question-detail-answer-textarea"
-            value={answerContent}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setAnswerContent(e.target.value)}
-          />
-
-          <div className="flex justify-end">
-            <Button
-              className="ask-question-submit"
-              disabled={submitting || !isAuthenticated || !answerContent.trim() || isChecking}
-              onClick={handleSubmitAnswer}
-            >
-              {submitting || isChecking ? "Processing..." : "Post Your Answer"}
-            </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No related questions found</p>
+            )}
           </div>
 
-          {!isAuthenticated && (
-            <p className="text-sm text-muted-foreground text-center">
-              <Link to="/auth" className="text-purple-400 hover:underline">
-                Sign in
-              </Link>{" "}
-              to post an answer
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="question-detail-sidebar">
-        <div className="question-detail-sidebar-card">
-          <h3 className="question-detail-sidebar-title">Related Questions</h3>
-          {relatedQuestions.length > 0 ? (
-            <ul className="question-detail-related-list">
-              {relatedQuestions.map((q) => (
-                <li key={q._id}>
-                  <Link to={`/question/${q._id}`} className="question-detail-related-link">
-                    {q.title}
-                  </Link>
-                  <div className="question-detail-related-meta">
-                    <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(q.createdAt), { addSuffix: true })}
-                    </span>
-                  </div>
-                </li>
+          <div className="question-detail-sidebar-card">
+            <h3 className="question-detail-sidebar-title">Hot Tags</h3>
+            <div className="question-detail-tag-cloud">
+              {["dsa", "javascript", "react", "python", "algorithms", "database", "web"].map((tag) => (
+                <Link to={`/?tag=${tag}`} key={tag}>
+                  <Badge variant="outline" className="bg-gray-800/50 hover:bg-gray-800 border-gray-700">
+                    {tag}
+                  </Badge>
+                </Link>
               ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">No related questions found</p>
-          )}
-        </div>
-
-        <div className="question-detail-sidebar-card">
-          <h3 className="question-detail-sidebar-title">Hot Tags</h3>
-          <div className="question-detail-tag-cloud">
-            {["dsa", "javascript", "react", "python", "algorithms", "database", "web"].map((tag) => (
-              <Link to={`/?tag=${tag}`} key={tag}>
-                <Badge variant="outline" className="bg-gray-800/50 hover:bg-gray-800 border-gray-700">
-                  {tag}
-                </Badge>
-              </Link>
-            ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <ConfirmationDialog
+        isOpen={showDeleteQuestionDialog}
+        onClose={() => setShowDeleteQuestionDialog(false)}
+        onConfirm={handleDeleteQuestionConfirmed}
+        title="Delete Question"
+        description="Are you sure you want to delete this question? This action cannot be undone and will remove all associated answers."
+        confirmText="Delete Question"
+        cancelText="Cancel"
+        variant="destructive"
+      />
+
+      <ConfirmationDialog
+        isOpen={showDeleteAnswerDialog}
+        onClose={() => {
+          setShowDeleteAnswerDialog(false)
+          setAnswerToDelete(null)
+        }}
+        onConfirm={handleDeleteAnswerConfirmed}
+        title="Delete Answer"
+        description="Are you sure you want to delete this answer? This action cannot be undone."
+        confirmText="Delete Answer"
+        cancelText="Cancel"
+        variant="destructive"
+      />
+    </>
   )
 }
