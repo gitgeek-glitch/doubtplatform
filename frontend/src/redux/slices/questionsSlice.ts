@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit"
-import type { RootState } from "../store" // Add this import
+import type { RootState } from "../store"
 import { api } from "@/lib/api"
 
 interface Author {
@@ -14,13 +14,11 @@ interface Question {
   title: string
   content: string
   tags: string[]
-  // upvotes: number
-  // downvotes: number
   answerCount: number
   viewCount?: number
   author: Author
   createdAt: string
-  isSolved?: boolean // Add this property to indicate if the question is solved
+  isSolved?: boolean
 }
 
 interface Answer {
@@ -50,7 +48,7 @@ interface QuestionsState {
   page: number
   questionVote: number
   answerVotes: Record<string, number>
-  lastFetchTime: number // Add this to track when questions were last fetched
+  lastFetchTime: number
 }
 
 interface FetchQuestionsParams {
@@ -61,9 +59,9 @@ interface FetchQuestionsParams {
   tag?: string
   loadMore?: boolean
   forceRefresh?: boolean
+  unanswered?: boolean
 }
 
-// Update the FetchQuestionsReturn interface
 interface FetchQuestionsReturn {
   questions: Question[]
   loadMore: boolean
@@ -85,11 +83,9 @@ const initialState: QuestionsState = {
   page: 1,
   questionVote: 0,
   answerVotes: {},
-  lastFetchTime: 0, // Initialize to 0
+  lastFetchTime: 0,
 }
 
-// Async thunks
-// Update the fetchQuestions thunk with proper RootState type
 export const fetchQuestions = createAsyncThunk<
   FetchQuestionsReturn,
   FetchQuestionsParams | undefined,
@@ -110,9 +106,9 @@ export const fetchQuestions = createAsyncThunk<
       tag = "",
       loadMore = false,
       forceRefresh = page === 1,
+      unanswered = false,
     } = params
 
-    // Extend cache duration to 30 seconds
     if (!forceRefresh && !loadMore && timeSinceLastFetch < 30000) {
       return {
         questions: state.questions.questions,
@@ -130,7 +126,7 @@ export const fetchQuestions = createAsyncThunk<
       ...(category !== "all" && { category }),
       ...(search && { search }),
       ...(tag && { tag }),
-      ...(filter === "unanswered" && { unanswered: "true" }),
+      ...(unanswered && { unanswered: "true" }),
     })
 
     const response = await api.get(`/questions?${queryParams}`)
@@ -223,13 +219,8 @@ export const submitAnswer = createAsyncThunk(
   async ({ questionId, content }: { questionId: string; content: string }, { rejectWithValue, dispatch }) => {
     try {
       const response = await api.post(`/questions/${questionId}/answers`, { content })
-
-      // Force refresh the question details to get the updated answer count and all answers
       await dispatch(fetchQuestionDetails(questionId))
-
-      // Force refresh votes for the new answer
       await dispatch(fetchVotes(questionId))
-
       return response.data
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || "Failed to submit answer")
@@ -237,7 +228,6 @@ export const submitAnswer = createAsyncThunk(
   },
 )
 
-// Update the submitQuestion thunk
 export const submitQuestion = createAsyncThunk(
   "questions/submitQuestion",
   async (
@@ -252,16 +242,13 @@ export const submitQuestion = createAsyncThunk(
         tags,
       })
 
-      // Immediately add the new question to the state
       dispatch(addNewQuestion(response.data))
-
-      // Force refresh questions list with proper typing
       await dispatch(
         fetchQuestions({
           forceRefresh: true,
           filter: "latest",
         }) as any,
-      ) // Type assertion needed due to dispatch typing limitations
+      )
 
       return response.data
     } catch (error: any) {
@@ -270,18 +257,12 @@ export const submitQuestion = createAsyncThunk(
   },
 )
 
-// Add these new thunks after the submitQuestion thunk
-
-// Delete a question
 export const deleteQuestion = createAsyncThunk(
   "questions/deleteQuestion",
   async (questionId: string, { rejectWithValue, dispatch }) => {
     try {
       await api.delete(`/questions/${questionId}`)
-
-      // Force refresh questions list to update UI
       dispatch(clearCache())
-
       return questionId
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || "Failed to delete question")
@@ -289,7 +270,6 @@ export const deleteQuestion = createAsyncThunk(
   },
 )
 
-// Delete an answer
 export const deleteAnswer = createAsyncThunk(
   "questions/deleteAnswer",
   async (answerId: string, { rejectWithValue }) => {
@@ -322,25 +302,20 @@ const questionsSlice = createSlice({
       state.answerVotes = {}
     },
     clearCache: (state) => {
-      // Reset the lastFetchTime to force a refresh on next fetch
       state.lastFetchTime = 0
     },
     addNewQuestion: (state, action: PayloadAction<Question>) => {
-      // Check if the question already exists to avoid duplicates
       const exists = state.questions.some((q) => q._id === action.payload._id)
       if (!exists) {
-        // Add the new question to the beginning of the questions array
         state.questions = [action.payload, ...state.questions]
       }
     },
     refreshQuestions: (state) => {
-      // Reset the lastFetchTime to force a refresh on next fetch
       state.lastFetchTime = 0
     },
   },
   extraReducers: (builder) => {
     builder
-      // Fetch questions
       .addCase(fetchQuestions.pending, (state, action) => {
         if (!(action.meta.arg?.loadMore ?? false)) {
           state.loading = true
@@ -351,13 +326,11 @@ const questionsSlice = createSlice({
         state.loading = false
         const { questions, loadMore, lastFetchTime, fromCache, hasMore } = action.payload
 
-        // Update lastFetchTime if this wasn't from cache
         if (!fromCache && lastFetchTime) {
           state.lastFetchTime = lastFetchTime
         }
 
         if (loadMore) {
-          // Filter out duplicates when loading more
           const newQuestions = questions.filter(
             (newQ: Question) => !state.questions.some((existingQ) => existingQ._id === newQ._id),
           )
@@ -379,7 +352,6 @@ const questionsSlice = createSlice({
         state.hasMore = false
       })
 
-      // Fetch question details
       .addCase(fetchQuestionDetails.pending, (state) => {
         state.loading = true
         state.error = null
@@ -388,19 +360,15 @@ const questionsSlice = createSlice({
         state.loading = false
         state.currentQuestion = action.payload.question
 
-        // Ensure we don't lose existing answers while updating
         if (state.answers.length > 0) {
-          // Merge existing answers with new ones, avoiding duplicates
           const existingAnswerIds = new Set(state.answers.map((a) => a._id))
           const newAnswers = action.payload.answers.filter((a: Answer) => !existingAnswerIds.has(a._id))
 
-          // Update existing answers with fresh data
           const updatedExistingAnswers = state.answers.map((existingAnswer) => {
             const freshAnswer = action.payload.answers.find((a: Answer) => a._id === existingAnswer._id)
             return freshAnswer || existingAnswer
           })
 
-          // Combine updated existing answers with new answers
           state.answers = [...updatedExistingAnswers, ...newAnswers]
         } else {
           state.answers = action.payload.answers
@@ -413,31 +381,11 @@ const questionsSlice = createSlice({
         state.error = action.payload as string
       })
 
-      // Fetch votes
       .addCase(fetchVotes.fulfilled, (state, action) => {
         state.questionVote = action.payload.questionVote
         state.answerVotes = action.payload.answerVotes
       })
 
-      // Vote on question
-      // .addCase(voteQuestion.fulfilled, (state, action) => {
-      //   const { value } = action.payload
-      //   const question = state.currentQuestion
-
-      //   if (question) {
-      //     // Remove previous vote if any
-      //     if (state.questionVote === 1) question.upvotes--
-      //     if (state.questionVote === -1) question.downvotes--
-
-      //     // Add new vote if not removing
-      //     if (value === 1) question.upvotes++
-      //     if (value === -1) question.downvotes++
-
-      //     state.questionVote = value
-      //   }
-      // })
-
-      // Vote on answer
       .addCase(voteAnswer.fulfilled, (state, action) => {
         const { answerId, value } = action.payload
         const currentVote = state.answerVotes[answerId] || 0
@@ -446,11 +394,9 @@ const questionsSlice = createSlice({
           if (answer._id === answerId) {
             const updatedAnswer = { ...answer }
 
-            // Remove previous vote if any
             if (currentVote === 1) updatedAnswer.upvotes--
             if (currentVote === -1) updatedAnswer.downvotes--
 
-            // Add new vote if not removing
             if (value === 1) updatedAnswer.upvotes++
             if (value === -1) updatedAnswer.downvotes++
 
@@ -465,7 +411,6 @@ const questionsSlice = createSlice({
         }
       })
 
-      // Accept answer
       .addCase(acceptAnswer.fulfilled, (state, action) => {
         const answerId = action.payload
         state.answers = state.answers.map((answer) => ({
@@ -473,36 +418,30 @@ const questionsSlice = createSlice({
           isAccepted: answer._id === answerId,
         }))
 
-        // Update the question's isSolved status
         if (state.currentQuestion) {
           state.currentQuestion.isSolved = true
         }
       })
 
-      // Submit answer
       .addCase(submitAnswer.fulfilled, (state, action) => {
-        // Check if the answer already exists to avoid duplicates
         const exists = state.answers.some((a) => a._id === action.payload._id)
         if (!exists) {
           state.answers.push(action.payload)
 
-          // Update the answer count on the current question
           if (state.currentQuestion) {
             state.currentQuestion.answerCount += 1
           }
         }
       })
 
-      // Submit question
       .addCase(submitQuestion.pending, (state) => {
         state.loading = true
         state.error = null
       })
       .addCase(submitQuestion.fulfilled, (state, action) => {
         state.loading = false
-        state.lastFetchTime = 0 // Reset last fetch time to force refresh
+        state.lastFetchTime = 0
 
-        // Add the new question to the beginning of the list
         const exists = state.questions.some((q) => q._id === action.payload._id)
         if (!exists) {
           state.questions = [action.payload, ...state.questions]
@@ -513,16 +452,13 @@ const questionsSlice = createSlice({
         state.error = action.payload as string
       })
 
-      // Delete question
       .addCase(deleteQuestion.pending, (state) => {
         state.loading = true
         state.error = null
       })
       .addCase(deleteQuestion.fulfilled, (state, action) => {
         state.loading = false
-        // Remove the deleted question from the questions array
         state.questions = state.questions.filter((question) => question._id !== action.payload)
-        // If the current question is the deleted one, reset it
         if (state.currentQuestion && state.currentQuestion._id === action.payload) {
           state.currentQuestion = null
         }
@@ -532,16 +468,13 @@ const questionsSlice = createSlice({
         state.error = action.payload as string
       })
 
-      // Delete answer
       .addCase(deleteAnswer.pending, (state) => {
         state.loading = true
         state.error = null
       })
       .addCase(deleteAnswer.fulfilled, (state, action) => {
         state.loading = false
-        // Remove the deleted answer from the answers array
         state.answers = state.answers.filter((answer) => answer._id !== action.payload)
-        // If the current question exists, decrement its answer count
         if (state.currentQuestion) {
           state.currentQuestion.answerCount = Math.max(0, state.currentQuestion.answerCount - 1)
         }

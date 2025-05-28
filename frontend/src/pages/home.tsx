@@ -16,6 +16,17 @@ import VotesDistribution from "@/components/votes-distribution"
 import { useLocomotiveScroll } from "@/context/locomotive-context"
 import { cn } from "@/lib/utils"
 
+interface FetchQuestionsParams {
+  filter: string
+  category: string
+  search: string
+  tag: string
+  forceRefresh?: boolean
+  loadMore?: boolean
+  page?: number
+  unanswered?: boolean
+}
+
 export default function HomePage() {
   const dispatch = useAppDispatch()
   const { questions, loading, hasMore, filter, category } = useAppSelector((state) => state.questions)
@@ -30,7 +41,6 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefreshTime, setLastRefreshTime] = useState(0)
 
-  // Parse query parameters
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const search = params.get("search") || ""
@@ -39,74 +49,77 @@ export default function HomePage() {
     setSearchParams({ search, tag })
   }, [location.search])
 
-  // Redirect unauthenticated users to landing page
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       navigate("/")
     }
   }, [isAuthenticated, isLoading, navigate])
 
-  // Fetch questions on initial load and when filters change
   useEffect(() => {
     if (isAuthenticated) {
-      // Force refresh on initial load and when filters change
-      dispatch(
-        fetchQuestions({
-          filter,
-          category,
-          search: searchParams.search,
-          tag: searchParams.tag,
-          forceRefresh: true,
-        }),
-      )
+      const fetchParams: FetchQuestionsParams = {
+        filter,
+        category,
+        search: searchParams.search,
+        tag: searchParams.tag,
+        forceRefresh: true,
+      }
 
-      // Reset scroll position when filter changes
+      if (filter === "unanswered") {
+        fetchParams.unanswered = true
+      }
+
+      dispatch(fetchQuestions(fetchParams))
+
       if (scroll) {
         scroll.scrollTo(0, { duration: 0, disableLerp: true })
       }
     }
   }, [dispatch, filter, category, searchParams, isAuthenticated, scroll])
 
-  // Reduce polling interval and use a more efficient approach
   useEffect(() => {
     if (!isAuthenticated) return
 
-    // Use a less frequent polling interval (60 seconds instead of 15)
     const intervalId = setInterval(() => {
       const now = Date.now()
-      // Only refresh if it's been at least 60 seconds since the last manual refresh
       if (now - lastRefreshTime > 60000) {
-        dispatch(
-          fetchQuestions({
-            filter,
-            category,
-            search: searchParams.search,
-            tag: searchParams.tag,
-          }),
-        )
+        const fetchParams: FetchQuestionsParams = {
+          filter,
+          category,
+          search: searchParams.search,
+          tag: searchParams.tag,
+        }
+
+        if (filter === "unanswered") {
+          fetchParams.unanswered = true
+        }
+
+        dispatch(fetchQuestions(fetchParams))
       }
-    }, 60000) // Poll every 60 seconds
+    }, 60000)
 
     return () => clearInterval(intervalId)
   }, [dispatch, filter, category, searchParams, isAuthenticated, lastRefreshTime])
 
-  // Refresh questions when window regains focus, but with throttling
   useEffect(() => {
     if (!isAuthenticated) return
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         const now = Date.now()
-        // Only refresh if it's been at least 30 seconds since the last refresh
         if (now - lastRefreshTime > 30000) {
-          dispatch(
-            fetchQuestions({
-              filter,
-              category,
-              search: searchParams.search,
-              tag: searchParams.tag,
-            }),
-          )
+          const fetchParams: FetchQuestionsParams = {
+            filter,
+            category,
+            search: searchParams.search,
+            tag: searchParams.tag,
+          }
+
+          if (filter === "unanswered") {
+            fetchParams.unanswered = true
+          }
+
+          dispatch(fetchQuestions(fetchParams))
           setLastRefreshTime(now)
         }
       }
@@ -114,57 +127,58 @@ export default function HomePage() {
 
     document.addEventListener("visibilitychange", handleVisibilityChange)
 
-    // Clean up event listener on unmount
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
   }, [dispatch, filter, category, searchParams, isAuthenticated, lastRefreshTime])
 
-  // Handle filter change
   const handleFilterChange = (value: string) => {
     dispatch(setFilter(value))
   }
 
-  // Handle category change
   const handleCategoryChange = (value: string) => {
     dispatch(setCategory(value))
   }
 
-  // Load more questions
   const handleLoadMore = () => {
-    dispatch(
-      fetchQuestions({
-        filter,
-        category,
-        search: searchParams.search,
-        tag: searchParams.tag,
-        loadMore: true,
-        page: questions.length / 10 + 1,
-      }),
-    )
+    const fetchParams: FetchQuestionsParams = {
+      filter,
+      category,
+      search: searchParams.search,
+      tag: searchParams.tag,
+      loadMore: true,
+      page: Math.floor(questions.length / 10) + 1,
+    }
+
+    if (filter === "unanswered") {
+      fetchParams.unanswered = true
+    }
+
+    dispatch(fetchQuestions(fetchParams))
   }
 
-  // Manual refresh with debounce and cooldown
   const handleRefresh = useCallback(
     debounce(() => {
       const now = Date.now()
-      // Only allow refresh if it's been at least 5 seconds since the last refresh
       if (now - lastRefreshTime > 5000) {
         setRefreshing(true)
-        dispatch(
-          fetchQuestions({
-            filter,
-            category,
-            search: searchParams.search,
-            tag: searchParams.tag,
-            forceRefresh: true,
-          }),
-        ).finally(() => {
+        const fetchParams: FetchQuestionsParams = {
+          filter,
+          category,
+          search: searchParams.search,
+          tag: searchParams.tag,
+          forceRefresh: true,
+        }
+
+        if (filter === "unanswered") {
+          fetchParams.unanswered = true
+        }
+
+        dispatch(fetchQuestions(fetchParams)).finally(() => {
           setRefreshing(false)
           setLastRefreshTime(now)
         })
       } else {
-        // If trying to refresh too soon, show a brief "refreshing" state
         setRefreshing(true)
         setTimeout(() => setRefreshing(false), 500)
       }
@@ -172,7 +186,6 @@ export default function HomePage() {
     [dispatch, filter, category, searchParams, lastRefreshTime],
   )
 
-  // Categories for filtering
   const categories = [
     { value: "all", label: "All Topics" },
     { value: "dsa", label: "DSA" },
