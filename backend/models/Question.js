@@ -35,14 +35,6 @@ const questionSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    // upvotes: {
-    //   type: Number,
-    //   default: 0,
-    // },
-    // downvotes: {
-    //   type: Number,
-    //   default: 0,
-    // },
     viewCount: {
       type: Number,
       default: 0,
@@ -62,7 +54,6 @@ const questionSchema = new mongoose.Schema(
   },
 )
 
-// Virtual for answerCount
 questionSchema.virtual("answerCount", {
   ref: "Answer",
   localField: "_id",
@@ -70,11 +61,9 @@ questionSchema.virtual("answerCount", {
   count: true,
 })
 
-// Set virtuals to true in toJSON
 questionSchema.set("toJSON", { virtuals: true })
 questionSchema.set("toObject", { virtuals: true })
 
-// Add text index for search
 questionSchema.index({ title: "text", content: "text", tags: "text" })
 
 const Question = mongoose.model("Question", questionSchema)

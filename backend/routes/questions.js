@@ -1,4 +1,5 @@
 import express from "express"
+import mongoose from "mongoose"
 import Question from "../models/Question.js"
 import Answer from "../models/Answer.js"
 import Vote from "../models/Vote.js"
@@ -8,7 +9,6 @@ import { cache } from "../server.js"
 
 const router = express.Router()
 
-// Cache middleware for read operations
 const cacheMiddleware =
   (duration = 300) =>
   (req, res, next) => {
@@ -16,115 +16,118 @@ const cacheMiddleware =
       return next()
     }
 
-    const key = `__express__${req.originalUrl || req.url}`
-    const cachedBody = cache.get(key)
+    try {
+      if (typeof cache !== "undefined" && cache && typeof cache.get === "function") {
+        const key = `__express__${req.originalUrl || req.url}`
+        const cachedBody = cache.get(key)
 
-    if (cachedBody) {
-      return res.json(cachedBody)
-    } else {
-      const originalJson = res.json
-      res.json = function (body) {
-        cache.set(key, body, duration)
-        originalJson.call(this, body)
+        if (cachedBody) {
+          return res.json(cachedBody)
+        } else {
+          const originalJson = res.json
+          res.json = function (body) {
+            try {
+              cache.set(key, body, duration)
+            } catch (error) {
+              console.error("Cache set error:", error)
+            }
+            originalJson.call(this, body)
+          }
+        }
       }
-      next()
+    } catch (error) {
+      console.error("Cache middleware error:", error)
     }
+
+    next()
   }
 
-// Clear cache when data changes
 const clearCache = (pattern) => {
-  const keys = cache.keys()
-  const matchingKeys = keys.filter((key) => key.includes(pattern))
-  matchingKeys.forEach((key) => cache.del(key))
+  try {
+    if (typeof cache !== "undefined" && cache && typeof cache.keys === "function") {
+      const keys = cache.keys()
+      const matchingKeys = keys.filter((key) => key.includes(pattern))
+      matchingKeys.forEach((key) => cache.del(key))
+    }
+  } catch (error) {
+    console.error("Cache clear error:", error)
+  }
 }
 
-// Get all questions with filtering and pagination
 router.get("/", cacheMiddleware(60), async (req, res) => {
   try {
-    const page = Number.parseInt(req.query.page) || 1
-    const limit = Number.parseInt(req.query.limit) || 10
+    const page = Math.max(1, Number.parseInt(req.query.page) || 1)
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit) || 10))
     const sort = req.query.sort || "latest"
     const category = req.query.category
     const search = req.query.search
     const tag = req.query.tag
     const unanswered = req.query.unanswered === "true"
 
-    let pipeline = []
+    const pipeline = []
 
-    // Match stage
     const matchStage = {}
     if (category && category !== "all") {
       matchStage.category = category
     }
-    if (search) {
-      matchStage.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { content: { $regex: search, $options: "i" } }
-      ]
+    if (search && search.trim()) {
+      const searchRegex = { $regex: search.trim(), $options: "i" }
+      matchStage.$or = [{ title: searchRegex }, { content: searchRegex }, { tags: searchRegex }]
     }
-    if (tag) {
-      matchStage.tags = tag
+    if (tag && tag.trim()) {
+      matchStage.tags = tag.trim()
     }
 
     pipeline.push({ $match: matchStage })
 
-    // Lookup answers to get answer count
     pipeline.push({
       $lookup: {
         from: "answers",
         localField: "_id",
         foreignField: "question",
-        as: "answers"
-      }
+        as: "answers",
+      },
     })
 
-    // Add answer count field
     pipeline.push({
       $addFields: {
-        answerCount: { $size: "$answers" }
-      }
+        answerCount: { $size: "$answers" },
+      },
     })
 
-    // Filter for unanswered questions if requested
     if (unanswered) {
       pipeline.push({
-        $match: { answerCount: 0 }
+        $match: { answerCount: 0 },
       })
     }
 
-    // Lookup author information
     pipeline.push({
       $lookup: {
         from: "users",
         localField: "author",
         foreignField: "_id",
         as: "author",
-        pipeline: [
-          { $project: { name: 1, avatar: 1, reputation: 1 } }
-        ]
-      }
+        pipeline: [{ $project: { name: 1, avatar: 1, reputation: 1 } }],
+      },
     })
 
-    // Unwind author array
     pipeline.push({
-      $unwind: "$author"
+      $unwind: "$author",
     })
 
-    // Remove the answers array as we only need the count
     pipeline.push({
       $project: {
-        answers: 0
-      }
+        answers: 0,
+      },
     })
 
-    // Sort configuration
     let sortConfig = {}
     switch (sort) {
       case "latest":
         sortConfig = { createdAt: -1 }
         break
       case "popular":
-        sortConfig = { upvotes: -1 }
+        sortConfig = { viewCount: -1, createdAt: -1 }
         break
       case "unanswered":
         sortConfig = { createdAt: -1 }
@@ -135,12 +138,10 @@ router.get("/", cacheMiddleware(60), async (req, res) => {
 
     pipeline.push({ $sort: sortConfig })
 
-    // Get total count before pagination
     const countPipeline = [...pipeline, { $count: "total" }]
     const [countResult] = await Question.aggregate(countPipeline)
     const totalCount = countResult?.total || 0
 
-    // Add pagination
     pipeline.push({ $skip: (page - 1) * limit })
     pipeline.push({ $limit: limit })
 
@@ -148,23 +149,24 @@ router.get("/", cacheMiddleware(60), async (req, res) => {
 
     res.json({
       questions,
-      hasMore: questions.length === limit,
+      hasMore: questions.length === limit && page * limit < totalCount,
       totalCount,
       totalPages: Math.ceil(totalCount / limit),
       currentPage: page,
     })
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    console.error("Fetch questions error:", error)
+    res.status(500).json({ message: "Failed to fetch questions" })
   }
 })
 
-// Get a single question by ID
 router.get("/:id", cacheMiddleware(60), async (req, res) => {
   try {
-    const question = await Question.findById(req.params.id)
-      .populate("author", "name avatar reputation")
-      .populate("answerCount")
-      .lean()
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid question ID" })
+    }
+
+    const question = await Question.findById(req.params.id).populate("author", "name avatar reputation").lean()
 
     if (!question) {
       return res.status(404).json({ message: "Question not found" })
@@ -176,170 +178,62 @@ router.get("/:id", cacheMiddleware(60), async (req, res) => {
 
     res.json(question)
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    console.error("Fetch question error:", error)
+    res.status(500).json({ message: "Failed to fetch question" })
   }
 })
 
-// Create a new question
-router.post("/", auth, async (req, res) => {
-  try {
-    const { title, content, tags, category } = req.body
-
-    const question = new Question({
-      title,
-      content,
-      tags,
-      category,
-      author: req.user.id,
-    })
-
-    await question.save()
-    await question.populate("author", "name avatar")
-
-    clearCache("/api/questions")
-
-    res.status(201).json(question)
-  } catch (error) {
-    res.status(500).json({ message: error.message })
-  }
-})
-
-// Update a question
-router.put("/:id", auth, async (req, res) => {
-  try {
-    const { title, content, tags, category } = req.body
-
-    const question = await Question.findById(req.params.id)
-
-    if (!question) {
-      return res.status(404).json({ message: "Question not found" })
-    }
-
-    if (question.author.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Not authorized to update this question" })
-    }
-
-    if (title) question.title = title
-    if (content) question.content = content
-    if (tags) question.tags = tags
-    if (category) question.category = category
-
-    await question.save()
-    await question.populate("author", "name avatar")
-
-    clearCache(`/api/questions/${req.params.id}`)
-    clearCache("/api/questions")
-
-    res.json(question)
-  } catch (error) {
-    res.status(500).json({ message: error.message })
-  }
-})
-
-// Delete a question
-router.delete("/:id", auth, async (req, res) => {
-  try {
-    const question = await Question.findById(req.params.id)
-
-    if (!question) {
-      return res.status(404).json({ message: "Question not found" })
-    }
-
-    const user = await User.findById(req.user.id)
-    if (question.author.toString() !== req.user.id && !user.isAdmin) {
-      return res.status(403).json({ message: "Not authorized to delete this question" })
-    }
-
-    await Promise.all([
-      Answer.deleteMany({ question: req.params.id }),
-      Vote.deleteMany({ question: req.params.id }),
-      question.deleteOne(),
-    ])
-
-    clearCache(`/api/questions/${req.params.id}`)
-    clearCache("/api/questions")
-
-    res.json({ message: "Question deleted successfully" })
-  } catch (error) {
-    res.status(500).json({ message: error.message })
-  }
-})
-
-// Get answers for a question
-router.get("/:id/answers", cacheMiddleware(60), async (req, res) => {
-  try {
-    const answers = await Answer.find({ question: req.params.id })
-      .sort({ upvotes: -1, createdAt: -1 })
-      .populate("author", "name avatar reputation")
-      .lean()
-
-    res.json(answers)
-  } catch (error) {
-    res.status(500).json({ message: error.message })
-  }
-})
-
-// Add an answer to a question
-router.post("/:id/answers", auth, async (req, res) => {
-  try {
-    const { content } = req.body
-
-    const question = await Question.findById(req.params.id)
-    if (!question) {
-      return res.status(404).json({ message: "Question not found" })
-    }
-
-    const answer = new Answer({
-      content,
-      question: req.params.id,
-      author: req.user.id,
-    })
-
-    await answer.save()
-    await answer.populate("author", "name avatar reputation")
-
-    clearCache(`/api/questions/${req.params.id}/answers`)
-
-    res.status(201).json(answer)
-  } catch (error) {
-    res.status(500).json({ message: error.message })
-  }
-})
-
-// Get user's votes for a question and its answers
 router.get("/:id/votes", auth, async (req, res) => {
   try {
-    const [questionVote, answers] = await Promise.all([
-      Vote.findOne({
-        user: req.user.id,
-        question: req.params.id,
-      }),
-      Answer.find({ question: req.params.id }).select("_id"),
-    ])
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid question ID" })
+    }
 
+    const answers = await Answer.find({ question: req.params.id }).select("_id").lean()
     const answerIds = answers.map((answer) => answer._id)
 
     const answerVotes = await Vote.find({
       user: req.user.id,
       answer: { $in: answerIds },
-    })
+    }).lean()
 
     res.json({
-      questionVote: questionVote ? questionVote.value : 0,
       answerVotes: answerVotes.map((vote) => ({
-        answerId: vote.answer,
+        answerId: vote.answer.toString(),
         value: vote.value,
       })),
     })
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    console.error("Fetch votes error:", error)
+    res.status(500).json({ message: "Failed to fetch votes" })
   }
 })
 
-// Get related questions
+router.get("/:id/answers", cacheMiddleware(60), async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid question ID" })
+    }
+
+    const answers = await Answer.find({ question: req.params.id })
+      .sort({ isAccepted: -1, upvotes: -1, createdAt: -1 })
+      .populate("author", "name avatar reputation")
+      .lean()
+
+    res.json(answers)
+  } catch (error) {
+    console.error("Fetch answers error:", error)
+    res.status(500).json({ message: "Failed to fetch answers" })
+  }
+})
+
 router.get("/:id/related", cacheMiddleware(300), async (req, res) => {
   try {
-    const question = await Question.findById(req.params.id).select("tags category")
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid question ID" })
+    }
+
+    const question = await Question.findById(req.params.id).select("tags category").lean()
     if (!question) {
       return res.status(404).json({ message: "Question not found" })
     }
@@ -348,14 +242,141 @@ router.get("/:id/related", cacheMiddleware(300), async (req, res) => {
       _id: { $ne: req.params.id },
       $or: [{ tags: { $in: question.tags } }, { category: question.category }],
     })
-      .sort({ upvotes: -1, createdAt: -1 })
+      .sort({ viewCount: -1, createdAt: -1 })
       .limit(5)
-      .select("title upvotes downvotes createdAt")
+      .select("title viewCount createdAt")
       .lean()
 
     res.json(relatedQuestions)
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    console.error("Fetch related questions error:", error)
+    res.status(500).json({ message: "Failed to fetch related questions" })
+  }
+})
+
+router.post("/", auth, async (req, res) => {
+  try {
+    const { title, content, tags, category } = req.body
+
+    if (!title || title.trim().length < 10) {
+      return res.status(400).json({ message: "Title must be at least 10 characters long" })
+    }
+
+    if (!content || content.trim().length < 20) {
+      return res.status(400).json({ message: "Content must be at least 20 characters long" })
+    }
+
+    if (!Array.isArray(tags) || tags.length === 0 || tags.length > 5) {
+      return res.status(400).json({ message: "Must have between 1 and 5 tags" })
+    }
+
+    const question = new Question({
+      title: title.trim(),
+      content: content.trim(),
+      tags: tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0),
+      category,
+      author: req.user.id,
+    })
+
+    await question.save()
+    await question.populate("author", "name avatar reputation")
+
+    clearCache("/api/questions")
+
+    res.status(201).json(question)
+  } catch (error) {
+    console.error("Create question error:", error)
+    res.status(500).json({ message: "Failed to create question" })
+  }
+})
+
+router.post("/:id/answers", auth, async (req, res) => {
+  try {
+    const { content } = req.body
+
+    if (!content || content.trim().length < 20) {
+      return res.status(400).json({ message: "Answer must be at least 20 characters long" })
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid question ID" })
+    }
+
+    const question = await Question.findById(req.params.id)
+    if (!question) {
+      return res.status(404).json({ message: "Question not found" })
+    }
+
+    const answer = new Answer({
+      content: content.trim(),
+      question: req.params.id,
+      author: req.user.id,
+    })
+
+    await answer.save()
+    await answer.populate("author", "name avatar reputation")
+
+    clearCache(`/api/questions/${req.params.id}/answers`)
+    clearCache(`/api/questions/${req.params.id}`)
+
+    res.status(201).json(answer)
+  } catch (error) {
+    console.error("Create answer error:", error)
+    res.status(500).json({ message: "Failed to create answer" })
+  }
+})
+
+router.delete("/:id", auth, async (req, res) => {
+  const session = await mongoose.startSession()
+
+  try {
+    await session.withTransaction(async () => {
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        throw new Error("Invalid question ID")
+      }
+
+      const question = await Question.findById(req.params.id).session(session)
+      if (!question) {
+        throw new Error("Question not found")
+      }
+
+      const user = await User.findById(req.user.id).session(session)
+      if (question.author.toString() !== req.user.id && !user?.isAdmin) {
+        throw new Error("Not authorized to delete this question")
+      }
+
+      const answers = await Answer.find({ question: req.params.id }).select("_id").session(session)
+      const answerIds = answers.map((answer) => answer._id)
+
+      await Vote.deleteMany({ answer: { $in: answerIds } }).session(session)
+      await Answer.deleteMany({ question: req.params.id }).session(session)
+      await Question.findByIdAndDelete(req.params.id).session(session)
+    })
+
+    clearCache(`/api/questions/${req.params.id}`)
+    clearCache("/api/questions")
+
+    res.json({ message: "Question deleted successfully" })
+  } catch (error) {
+    console.error("Delete question error:", error)
+
+    let statusCode = 500
+    let message = "Failed to delete question"
+
+    if (error.message.includes("Invalid question ID")) {
+      statusCode = 400
+      message = error.message
+    } else if (error.message === "Question not found") {
+      statusCode = 404
+      message = error.message
+    } else if (error.message.includes("Not authorized")) {
+      statusCode = 403
+      message = error.message
+    }
+
+    res.status(statusCode).json({ message })
+  } finally {
+    await session.endSession()
   }
 })
 

@@ -46,7 +46,6 @@ interface QuestionsState {
   filter: string
   category: string
   page: number
-  questionVote: number
   answerVotes: Record<string, number>
   lastFetchTime: number
 }
@@ -81,7 +80,6 @@ const initialState: QuestionsState = {
   filter: "latest",
   category: "all",
   page: 1,
-  questionVote: 0,
   answerVotes: {},
   lastFetchTime: 0,
 }
@@ -167,7 +165,6 @@ export const fetchVotes = createAsyncThunk("questions/fetchVotes", async (questi
   try {
     const response = await api.get(`/questions/${questionId}/votes`)
     return {
-      questionVote: response.data.questionVote || 0,
       answerVotes: response.data.answerVotes.reduce((acc: Record<string, number>, vote: any) => {
         acc[vote.answerId] = vote.value
         return acc
@@ -178,27 +175,18 @@ export const fetchVotes = createAsyncThunk("questions/fetchVotes", async (questi
   }
 })
 
-export const voteQuestion = createAsyncThunk(
-  "questions/voteQuestion",
-  async ({ questionId, value }: { questionId: string; value: number }, { rejectWithValue }) => {
-    try {
-      await api.post(`/questions/${questionId}/vote`, { value })
-      return { value }
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Failed to vote on question")
-    }
-  },
-)
-
 export const voteAnswer = createAsyncThunk(
   "questions/voteAnswer",
   async ({ answerId, value }: { answerId: string; value: number }, { rejectWithValue }) => {
     try {
       const response = await api.post(`/answers/${answerId}/vote`, { value })
-      return { answerId, value, answer: response.data.answer }
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || "Failed to vote on answer"
-      return rejectWithValue(errorMessage)
+      return {
+        answerId,
+        vote: response.data.vote ? response.data.vote.value : value,
+        answer: response.data.answer,
+      }
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Failed to vote")
     }
   },
 )
@@ -299,7 +287,6 @@ const questionsSlice = createSlice({
       state.currentQuestion = null
       state.answers = []
       state.relatedQuestions = []
-      state.questionVote = 0
       state.answerVotes = {}
     },
     clearCache: (state) => {
@@ -383,12 +370,11 @@ const questionsSlice = createSlice({
       })
 
       .addCase(fetchVotes.fulfilled, (state, action) => {
-        state.questionVote = action.payload.questionVote
         state.answerVotes = action.payload.answerVotes
       })
 
       .addCase(voteAnswer.fulfilled, (state, action) => {
-        const { answerId, value, answer } = action.payload
+        const { answerId, vote, answer } = action.payload
 
         if (answer) {
           state.answers = state.answers.map((a) =>
@@ -398,7 +384,7 @@ const questionsSlice = createSlice({
 
         state.answerVotes = {
           ...state.answerVotes,
-          [answerId]: value,
+          [answerId]: vote,
         }
       })
 

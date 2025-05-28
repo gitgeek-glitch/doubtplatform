@@ -190,7 +190,9 @@ export default function QuestionDetailPage() {
         description: "Your vote has been recorded",
       })
     } catch (error: any) {
-      if (error.includes("409") || error.includes("Duplicate")) {
+      const errorMessage = typeof error === "string" ? error : error?.message || "Unknown error"
+
+      if (errorMessage.includes("409") || errorMessage.includes("Duplicate")) {
         toast({
           title: "Vote conflict",
           description: "Please refresh the page and try again",

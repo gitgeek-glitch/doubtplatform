@@ -7,17 +7,14 @@ const voteSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    question: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Question",
-    },
     answer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Answer",
+      required: true,
     },
     value: {
       type: Number,
-      enum: [-1, 0, 1],
+      enum: [-1, 1],
       required: true,
     },
   },
@@ -26,41 +23,7 @@ const voteSchema = new mongoose.Schema(
   },
 )
 
-voteSchema.index(
-  { user: 1, question: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      question: { $exists: true, $ne: null },
-      answer: { $exists: false },
-    },
-  },
-)
-
-voteSchema.index(
-  { user: 1, answer: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      answer: { $exists: true, $ne: null },
-      question: { $exists: false },
-    },
-  },
-)
-
-voteSchema.pre("save", function (next) {
-  if (this.question && this.answer) {
-    const err = new Error("Vote cannot be for both question and answer")
-    return next(err)
-  }
-
-  if (!this.question && !this.answer) {
-    const err = new Error("Vote must be for either a question or an answer")
-    return next(err)
-  }
-
-  next()
-})
+voteSchema.index({ user: 1, answer: 1 }, { unique: true })
 
 const Vote = mongoose.model("Vote", voteSchema)
 
