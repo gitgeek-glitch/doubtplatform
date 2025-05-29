@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useAppDispatch } from "@/redux/hooks"
-import { voteAnswer, acceptAnswer, deleteAnswer } from "@/redux/slices/questionsSlice"
+import { voteAnswer, acceptAnswer, deleteAnswer } from "@/redux/thunks/questionsThunks"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"

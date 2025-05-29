@@ -6,9 +6,9 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import {
   fetchQuestionDetails,
   fetchVotes,
-  resetQuestionState,
   deleteQuestion,
-} from "@/redux/slices/questionsSlice"
+} from "@/redux/thunks/questionsThunks"
+import { resetQuestionState } from "@/redux/slices/questionsSlice"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { AlertTriangle } from "lucide-react"
