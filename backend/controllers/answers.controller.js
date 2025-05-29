@@ -10,6 +10,43 @@ const clearCache = (pattern) => {
   matchingKeys.forEach((key) => cache.del(key))
 }
 
+const updateUserVoteCounts = async (userId) => {
+  try {
+    const answerVotes = await Vote.aggregate([
+      { 
+        $lookup: {
+          from: "answers",
+          localField: "answer",
+          foreignField: "_id",
+          as: "answerData"
+        }
+      },
+      { $unwind: "$answerData" },
+      { $match: { "answerData.author": userId } },
+      {
+        $group: {
+          _id: null,
+          upvotes: { $sum: { $cond: [{ $eq: ["$value", 1] }, 1, 0] } },
+          downvotes: { $sum: { $cond: [{ $eq: ["$value", -1] }, 1, 0] } }
+        }
+      }
+    ])
+
+    const answerUpvotes = answerVotes.length > 0 ? answerVotes[0].upvotes : 0
+    const answerDownvotes = answerVotes.length > 0 ? answerVotes[0].downvotes : 0
+
+    await User.findByIdAndUpdate(userId, {
+      answerUpvotesReceived: answerUpvotes,
+      answerDownvotesReceived: answerDownvotes
+    })
+
+    return { answerUpvotes, answerDownvotes }
+  } catch (error) {
+    console.error("Error updating user vote counts:", error)
+    throw error
+  }
+}
+
 export const updateAnswer = async (req, res) => {
   try {
     const { content } = req.body
@@ -63,6 +100,8 @@ export const deleteAnswer = async (req, res) => {
       Vote.deleteMany({ answer: req.params.id }),
       answer.deleteOne(),
     ])
+
+    await updateUserVoteCounts(answer.author)
 
     clearCache(`/api/questions/${questionId}/answers`)
 
@@ -148,6 +187,8 @@ export const voteAnswer = async (req, res) => {
           await author.save()
         }
       }
+
+      await updateUserVoteCounts(answer.author)
     }
 
     clearCache(`/api/questions/${answer.question}/answers`)

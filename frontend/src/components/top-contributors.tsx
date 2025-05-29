@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
-import { fetchLeaderboard } from "@/redux/slices/leaderboardSlice"
+import { fetchLeaderboard } from "@/redux/thunks/leaderboardThunks"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"

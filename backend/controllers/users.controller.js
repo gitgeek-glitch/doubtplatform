@@ -2,6 +2,44 @@ import User from "../models/User.model.js"
 import Question from "../models/Question.model.js"
 import Answer from "../models/Answer.model.js"
 import Vote from "../models/Vote.model.js"
+import mongoose from "mongoose"
+
+const updateUserVoteCounts = async (userId) => {
+  try {
+    const answerVotes = await Vote.aggregate([
+      { 
+        $lookup: {
+          from: "answers",
+          localField: "answer",
+          foreignField: "_id",
+          as: "answerData"
+        }
+      },
+      { $unwind: "$answerData" },
+      { $match: { "answerData.author": new mongoose.Types.ObjectId(userId) } },
+      {
+        $group: {
+          _id: null,
+          upvotes: { $sum: { $cond: [{ $eq: ["$value", 1] }, 1, 0] } },
+          downvotes: { $sum: { $cond: [{ $eq: ["$value", -1] }, 1, 0] } }
+        }
+      }
+    ])
+
+    const answerUpvotes = answerVotes.length > 0 ? answerVotes[0].upvotes : 0
+    const answerDownvotes = answerVotes.length > 0 ? answerVotes[0].downvotes : 0
+
+    await User.findByIdAndUpdate(userId, {
+      answerUpvotesReceived: answerUpvotes,
+      answerDownvotesReceived: answerDownvotes
+    })
+
+    return { answerUpvotes, answerDownvotes }
+  } catch (error) {
+    console.error("Error updating user vote counts:", error)
+    throw error
+  }
+}
 
 export const getLeaderboard = async (req, res) => {
   try {
@@ -70,6 +108,8 @@ export const getLeaderboard = async (req, res) => {
 
 export const getUserById = async (req, res) => {
   try {
+    await updateUserVoteCounts(req.params.id)
+    
     const user = await User.findById(req.params.id)
       .select("-password")
       .populate("questionsCount")
@@ -87,6 +127,8 @@ export const getUserById = async (req, res) => {
 
 export const getUserVotesDistribution = async (req, res) => {
   try {
+    await updateUserVoteCounts(req.params.id)
+    
     const user = await User.findById(req.params.id)
     
     if (!user) {
@@ -99,46 +141,6 @@ export const getUserVotesDistribution = async (req, res) => {
     })
   } catch (error) {
     res.status(500).json({ message: error.message })
-  }
-}
-
-export const updateUserVoteCounts = async (userId) => {
-  try {
-    const answerVotes = await Vote.aggregate([
-      { 
-        $lookup: {
-          from: "answers",
-          localField: "answer",
-          foreignField: "_id",
-          as: "answerData"
-        }
-      },
-      { $unwind: "$answerData" },
-      { $match: { "answerData.author": mongoose.Types.ObjectId(userId) } },
-      {
-        $group: {
-          _id: null,
-          upvotes: { $sum: { $cond: [{ $eq: ["$value", 1] }, 1, 0] } },
-          downvotes: { $sum: { $cond: [{ $eq: ["$value", -1] }, 1, 0] } }
-        }
-      }
-    ])
-
-    const answerUpvotes = answerVotes.length > 0 ? answerVotes[0].upvotes : 0
-    const answerDownvotes = answerVotes.length > 0 ? answerVotes[0].downvotes : 0
-
-    await User.findByIdAndUpdate(userId, {
-      answerUpvotesReceived: answerUpvotes,
-      answerDownvotesReceived: answerDownvotes
-    })
-
-    return {
-      answerUpvotes,
-      answerDownvotes
-    }
-  } catch (error) {
-    console.error("Error updating user vote counts:", error)
-    throw error
   }
 }
 
@@ -245,3 +247,5 @@ export const getSavedQuestions = async (req, res) => {
     res.status(500).json({ message: error.message })
   }
 }
+
+export { updateUserVoteCounts }
