@@ -211,7 +211,7 @@ export function AnswersSection({
           {answers.length > 0 && (
             <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isRefreshing}>
               <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
-              {isRefreshing ? "Refreshing..." : "Refresh"}
+              {isRefreshing ? "" : ""}
             </Button>
           )}
         </div>
