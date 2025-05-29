@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { logout } from "@/redux/slices/authSlice"
 import { Button } from "@/components/ui/button"
@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Search, Menu, X, LogOut, User, Settings, Bell, Moon, Sun } from 'lucide-react'
+import { Search, Menu, X, LogOut, User, Settings, Moon, Sun } from 'lucide-react'
 import { useTheme } from "@/components/theme-provider"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -25,10 +25,13 @@ export default function Navbar() {
   const { theme, setTheme } = useTheme()
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const { toast } = useToast()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [scrolled, setScrolled] = useState(false)
+
+  const isHomePage = location.pathname === "/home"
 
   useEffect(() => {
     const handleScroll = () => {
@@ -79,8 +82,7 @@ export default function Navbar() {
             <span className="navbar-logo-text">DoubtSolve</span>
           </a>
 
-          {/* Search bar only shown for authenticated users */}
-          {isAuthenticated && (
+          {isAuthenticated && isHomePage && (
             <form onSubmit={handleSearch} className="navbar-search">
               <div className="relative group">
                 <Input
@@ -101,13 +103,6 @@ export default function Navbar() {
           <Button variant="ghost" size="icon" onClick={toggleTheme} className="navbar-theme-toggle">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
-          
-          {isAuthenticated && (
-          <Button variant="ghost" size="icon" className="navbar-notification">
-            <Bell className="h-4 w-4" />
-            <span className="navbar-notification-badge">3</span>
-          </Button>
-          )}
 
           {isAuthenticated ? (
             <>
@@ -178,12 +173,10 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu */}
       {mobileMenuOpen && (
         <div className="navbar-mobile-menu">
           <div className="navbar-mobile-container">
-            {/* Mobile search only shown for authenticated users */}
-            {isAuthenticated && (
+            {isAuthenticated && isHomePage && (
               <form onSubmit={handleSearch} className="navbar-mobile-search">
                 <Input
                   type="search"

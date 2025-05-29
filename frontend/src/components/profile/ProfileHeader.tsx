@@ -90,16 +90,16 @@ export default function ProfileHeader({ user, isOwnProfile, userVotesDistributio
         <div className="profile-info">
           <div className="profile-name-row">
             <div>
-              <h1 className="profile-name">{user.name}</h1>
+              <h1 className="profile-name text-white">{user.name}</h1>
               <div className="flex items-center gap-2 mt-1">
-                <p className="profile-username">@{user.email.split("@")[0]}</p>
+                <p className="profile-username text-white">@{user.email.split("@")[0]}</p>
                 <Badge className={getRoleBadgeColor(user.role)}>{user.role}</Badge>
               </div>
             </div>
 
             {isOwnProfile && (
-              <Button variant="outline" className="profile-edit-button">
-                <Edit className="h-4 w-4 mr-2" />
+              <Button variant="outline" className="profile-edit-button text-white">
+                <Edit className="h-4 w-4 mr-2 text-white" />
                 Edit Profile
               </Button>
             )}
@@ -119,7 +119,7 @@ export default function ProfileHeader({ user, isOwnProfile, userVotesDistributio
                   {user.role === "Newbie" ? 100 : user.role === "Intermediate" ? 500 : 1000}
                 </span>
               </div>
-              <div className="w-full bg-gray-700 rounded-full h-2.5">
+              <div className="w-full bg-gray-300 dark:bg-gray-700 rounded-full h-2.5">
                 <div
                   className="bg-purple-600 h-2.5 rounded-full"
                   style={{ width: `${roleProgress.progress}%` }}
