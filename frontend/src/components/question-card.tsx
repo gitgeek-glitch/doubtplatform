@@ -5,7 +5,6 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useAppSelector, useAppDispatch } from "@/redux/hooks"
 import { deleteQuestion } from "@/redux/thunks/questionsThunks"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
@@ -110,10 +109,6 @@ export default function QuestionCard({ question }: QuestionCardProps) {
         <CardFooter className="p-4 pt-0 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Link to={`/profile/${question.author._id}`} className="flex items-center gap-2">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={question.author.avatar || "/placeholder.svg"} alt={question.author.name} />
-                <AvatarFallback>{question.author.name.charAt(0)}</AvatarFallback>
-              </Avatar>
               <span className="text-sm text-muted-foreground">{question.author.name}</span>
             </Link>
             <span className="text-xs text-muted-foreground">

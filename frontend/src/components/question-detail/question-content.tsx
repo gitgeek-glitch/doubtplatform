@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { formatDistanceToNow } from "date-fns"
 import MarkdownRenderer from "@/components/markdown-renderer"
 
@@ -42,12 +41,6 @@ export function QuestionContent({ question }: QuestionContentProps) {
                 {question.author.name}
               </Link>
             </div>
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={question.author.avatar || "/placeholder.svg"} alt={question.author.name} />
-              <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                {question.author.name.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
           </div>
         </div>
       </div>

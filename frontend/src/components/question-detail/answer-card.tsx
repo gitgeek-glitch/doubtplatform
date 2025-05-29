@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { ThumbsUp, ThumbsDown, Check, Trash2 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
@@ -132,15 +131,6 @@ export function AnswerCard({
                     {answer.author.name}
                   </Link>
                 </div>
-                <Avatar className="h-10 w-10">
-                  <AvatarImage
-                    src={answer.author.avatar || "/placeholder.svg"}
-                    alt={answer.author.name}
-                  />
-                  <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                    {answer.author.name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
               </div>
             </div>
           </div>
