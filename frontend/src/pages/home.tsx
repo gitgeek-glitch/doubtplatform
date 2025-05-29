@@ -255,8 +255,8 @@ export default function HomePage() {
               <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
             </Button>
 
-            <Button onClick={() => navigate("/ask")} className="ask-question-submit">
-              <PlusCircle className="h-4 w-4 mr-2" />
+            <Button onClick={() => navigate("/ask")} className="ask-question-submit text-white">
+              <PlusCircle className="h-4 w-4 mr-2 text-white" />
               Ask Question
             </Button>
           </div>

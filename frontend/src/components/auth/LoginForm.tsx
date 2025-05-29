@@ -115,7 +115,7 @@ export default function LoginForm({ isLoading, setLocalLoading, onSwitchTab }: L
       <div className="auth-field">
         <div className="flex items-center justify-between">
           <Label htmlFor="password">Password</Label>
-          <Button variant="link" className="p-0 h-auto text-xs text-purple-400">
+          <Button variant="link" className="p-0 h-auto text-xs text-teal-400">
             Forgot password?
           </Button>
         </div>

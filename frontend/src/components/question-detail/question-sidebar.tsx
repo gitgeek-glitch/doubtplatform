@@ -27,7 +27,7 @@ export function QuestionSidebar({ relatedQuestions }: QuestionSidebarProps) {
               <li key={q._id}>
                 <Link 
                   to={`/question/${q._id}`} 
-                  className="question-detail-related-link text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:underline block"
+                  className="question-detail-related-link text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline block"
                 >
                   {q.title}
                 </Link>

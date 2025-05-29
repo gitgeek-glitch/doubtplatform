@@ -49,7 +49,7 @@ export default function LandingPage() {
             and grow together in their academic journey.
           </p>
           <div className={`landing-hero-buttons ${isLoaded ? "animate-in" : ""}`} data-scroll data-scroll-delay="0.3">
-            <Button asChild className="landing-hero-button-primary">
+            <Button asChild className="landing-hero-button-primary text-white">
               <Link to="/auth">Get Started</Link>
             </Button>
           </div>
@@ -122,7 +122,7 @@ export default function LandingPage() {
               Our platform makes it easy to ask questions, get answers, and collaborate with peers. The intuitive
               interface helps you focus on learning, not figuring out how to use the platform.
             </p>
-            <Button asChild className="landing-demo-button">
+            <Button asChild className="landing-demo-button text-white">
               <Link to="/auth">
                 Join Now <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -137,7 +137,7 @@ export default function LandingPage() {
                   <span></span>
                   <span></span>
                 </div>
-                <div className="landing-demo-browser-address">collegequora.edu</div>
+                <div className="landing-demo-browser-address">collegequora.vercel.app</div>
               </div>
               <div className="landing-demo-browser-content">
                 <div className="landing-demo-mockup">
@@ -220,7 +220,7 @@ export default function LandingPage() {
             Join students who use CollegeQuora to accelerate their learning
           </p>
           <div className="landing-cta-buttons">
-            <Button asChild size="lg" className="landing-cta-button-primary">
+            <Button asChild size="lg" className="landing-cta-button-primary text-white">
               <Link to="/auth">Sign Up Now</Link>
             </Button>
           </div>
