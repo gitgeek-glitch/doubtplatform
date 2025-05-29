@@ -42,18 +42,22 @@ router.put("/:id", auth, async (req, res) => {
 
 router.delete("/:id", auth, async (req, res) => {
   try {
-    const answer = await Answer.findById(req.params.id)
+    const answer = await Answer.findById(req.params.id).populate('question')
 
     if (!answer) {
       return res.status(404).json({ message: "Answer not found" })
     }
 
     const user = await User.findById(req.user.id)
-    if (answer.author.toString() !== req.user.id && !user.isAdmin) {
+    const isAnswerAuthor = answer.author.toString() === req.user.id
+    const isQuestionAuthor = answer.question.author.toString() === req.user.id
+    const isAdmin = user.isAdmin
+
+    if (!isAnswerAuthor && !isQuestionAuthor && !isAdmin) {
       return res.status(403).json({ message: "Not authorized to delete this answer" })
     }
 
-    const questionId = answer.question
+    const questionId = answer.question._id
 
     await Promise.all([
       Question.findOneAndUpdate(
