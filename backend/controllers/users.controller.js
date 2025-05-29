@@ -1,16 +1,10 @@
-import express from "express"
-import User from "../models/User.js"
-import Question from "../models/Question.js"
-import Answer from "../models/Answer.js"
-import Vote from "../models/Vote.js"
-import { auth } from "../middleware/auth.js"
+import User from "../models/User.model.js"
+import Question from "../models/Question.model.js"
+import Answer from "../models/Answer.model.js"
+import Vote from "../models/Vote.model.js"
 
-const router = express.Router()
-
-// Get leaderboard data - now based only on answer upvotes
-router.get("/leaderboard", async (req, res) => {
+export const getLeaderboard = async (req, res) => {
   try {
-    // Only aggregate votes on answers
     const answerVotes = await Vote.aggregate([
       { $match: { answer: { $exists: true, $ne: null } } },
       {
@@ -35,21 +29,17 @@ router.get("/leaderboard", async (req, res) => {
       },
     ])
 
-    // Convert to array for easier processing
     const votesArray = answerVotes.map(item => ({
       _id: item._id,
       upvotesReceived: item.upvotesReceived,
       downvotesReceived: item.downvotesReceived
     }))
 
-    // Sort by upvotes received on answers
     votesArray.sort((a, b) => b.upvotesReceived - a.upvotesReceived)
 
-    // Get user details for top users
     const userIds = votesArray.slice(0, 10).map((item) => item._id)
     const users = await User.find({ _id: { $in: userIds } }).select("name avatar reputation answerUpvotesReceived answerDownvotesReceived role")
 
-    // Combine user details with vote data
     const leaderboardUsers = users.map((user) => {
       const voteData = votesArray.find((v) => v._id.toString() === user._id.toString())
       return {
@@ -63,10 +53,8 @@ router.get("/leaderboard", async (req, res) => {
       }
     })
 
-    // Sort by upvotes received
     leaderboardUsers.sort((a, b) => b.upvotesReceived - a.upvotesReceived)
 
-    // Calculate total upvotes and downvotes
     const totalUpvotes = votesArray.reduce((sum, item) => sum + item.upvotesReceived, 0)
     const totalDownvotes = votesArray.reduce((sum, item) => sum + item.downvotesReceived, 0)
 
@@ -78,10 +66,9 @@ router.get("/leaderboard", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-// Get user by ID
-router.get("/:id", async (req, res) => {
+export const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
       .select("-password")
@@ -96,10 +83,9 @@ router.get("/:id", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-// Get user votes distribution
-router.get("/:id/votes-distribution", async (req, res) => {
+export const getUserVotesDistribution = async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
     
@@ -107,43 +93,17 @@ router.get("/:id/votes-distribution", async (req, res) => {
       return res.status(404).json({ message: "User not found" })
     }
     
-    // Return the user's vote distribution data
     res.json({
       answerUpvotes: user.answerUpvotesReceived || 0,
-      answerDownvotes: user.answerDownvotesReceived || 0,
-      questionUpvotes: user.questionUpvotesReceived || 0,
-      questionDownvotes: user.questionDownvotesReceived || 0
+      answerDownvotes: user.answerDownvotesReceived || 0
     })
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-// Update user votes counts (internal, not exposed as API endpoint)
 export const updateUserVoteCounts = async (userId) => {
   try {
-    // Count upvotes and downvotes for questions
-    const questionVotes = await Vote.aggregate([
-      { 
-        $lookup: {
-          from: "questions",
-          localField: "question",
-          foreignField: "_id",
-          as: "questionData"
-        }
-      },
-      { $unwind: "$questionData" },
-      { $match: { "questionData.author": mongoose.Types.ObjectId(userId) } },
-      {
-        $group: {
-          _id: null,
-          upvotes: { $sum: { $cond: [{ $eq: ["$value", 1] }, 1, 0] } },
-          downvotes: { $sum: { $cond: [{ $eq: ["$value", -1] }, 1, 0] } }
-        }
-      }
-    ])
-
-    // Count upvotes and downvotes for answers
     const answerVotes = await Vote.aggregate([
       { 
         $lookup: {
@@ -164,22 +124,15 @@ export const updateUserVoteCounts = async (userId) => {
       }
     ])
 
-    // Update user
-    const questionUpvotes = questionVotes.length > 0 ? questionVotes[0].upvotes : 0
-    const questionDownvotes = questionVotes.length > 0 ? questionVotes[0].downvotes : 0
     const answerUpvotes = answerVotes.length > 0 ? answerVotes[0].upvotes : 0
     const answerDownvotes = answerVotes.length > 0 ? answerVotes[0].downvotes : 0
 
     await User.findByIdAndUpdate(userId, {
-      questionUpvotesReceived: questionUpvotes,
-      questionDownvotesReceived: questionDownvotes,
       answerUpvotesReceived: answerUpvotes,
       answerDownvotesReceived: answerDownvotes
     })
 
     return {
-      questionUpvotes,
-      questionDownvotes,
       answerUpvotes,
       answerDownvotes
     }
@@ -189,8 +142,7 @@ export const updateUserVoteCounts = async (userId) => {
   }
 }
 
-// Update user profile
-router.put("/profile", auth, async (req, res) => {
+export const updateProfile = async (req, res) => {
   try {
     const { name, bio, avatar } = req.body
 
@@ -205,7 +157,6 @@ router.put("/profile", auth, async (req, res) => {
 
     await user.save()
 
-    // Return user data without password
     const userData = user.toObject()
     delete userData.password
 
@@ -213,10 +164,9 @@ router.put("/profile", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-// Get user's questions
-router.get("/:id/questions", async (req, res) => {
+export const getUserQuestions = async (req, res) => {
   try {
     const questions = await Question.find({ author: req.params.id })
       .sort({ createdAt: -1 })
@@ -227,10 +177,9 @@ router.get("/:id/questions", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-// Get user's answers
-router.get("/:id/answers", async (req, res) => {
+export const getUserAnswers = async (req, res) => {
   try {
     const answers = await Answer.find({ author: req.params.id })
       .sort({ createdAt: -1 })
@@ -244,10 +193,9 @@ router.get("/:id/answers", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-// Save/unsave a question
-router.post("/save-question/:id", auth, async (req, res) => {
+export const saveQuestion = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
     if (!user) {
@@ -259,14 +207,11 @@ router.post("/save-question/:id", auth, async (req, res) => {
       return res.status(404).json({ message: "Question not found" })
     }
 
-    // Check if question is already saved
     const isSaved = user.savedQuestions.includes(req.params.id)
 
     if (isSaved) {
-      // Unsave question
       user.savedQuestions = user.savedQuestions.filter((q) => q.toString() !== req.params.id)
     } else {
-      // Save question
       user.savedQuestions.push(req.params.id)
     }
 
@@ -279,10 +224,9 @@ router.post("/save-question/:id", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-// Get saved questions
-router.get("/saved-questions", auth, async (req, res) => {
+export const getSavedQuestions = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).populate({
       path: "savedQuestions",
@@ -300,6 +244,4 @@ router.get("/saved-questions", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
-
-export default router
+}

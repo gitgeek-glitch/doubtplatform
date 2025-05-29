@@ -8,10 +8,10 @@ import compression from "compression"
 import NodeCache from "node-cache"
 
 // Import routes
-import authRoutes from "./routes/auth.js"
-import userRoutes from "./routes/users.js"
-import questionRoutes from "./routes/questions.js"
-import answerRoutes from "./routes/answers.js"
+import authRoutes from "./routes/auth.route.js"
+import userRoutes from "./routes/users.route.js"
+import questionRoutes from "./routes/questions.route.js"
+import answerRoutes from "./routes/answers.route.js"
 
 // Load environment variables
 dotenv.config()

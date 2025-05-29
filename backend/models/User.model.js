@@ -1,12 +1,11 @@
 import mongoose from "mongoose"
 import bcrypt from "bcryptjs"
 
-// Define user role thresholds
 export const USER_ROLES = {
-  NEWBIE: "Newbie",       // 0-99 answer upvotes
-  INTERMEDIATE: "Intermediate", // 100-499 answer upvotes
-  EXPERT: "Expert",       // 500-999 answer upvotes
-  MASTER: "Master"        // 1000+ answer upvotes
+  NEWBIE: "Newbie",
+  INTERMEDIATE: "Intermediate",
+  EXPERT: "Expert",
+  MASTER: "Master"
 }
 
 const userSchema = new mongoose.Schema(
@@ -49,14 +48,6 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    questionUpvotesReceived: {
-      type: Number,
-      default: 0,
-    },
-    questionDownvotesReceived: {
-      type: Number,
-      default: 0,
-    },
     role: {
       type: String,
       enum: Object.values(USER_ROLES),
@@ -82,7 +73,6 @@ const userSchema = new mongoose.Schema(
   },
 )
 
-// Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next()
 
@@ -95,9 +85,7 @@ userSchema.pre("save", async function (next) {
   }
 })
 
-// Update user role based on answer upvotes
 userSchema.pre("save", function (next) {
-  // Only update role if answerUpvotesReceived has changed
   if (!this.isModified("answerUpvotesReceived")) return next()
   
   const upvotes = this.answerUpvotesReceived;
@@ -115,7 +103,6 @@ userSchema.pre("save", function (next) {
   next()
 })
 
-// Method to compare passwords
 userSchema.methods.comparePassword = async function (candidatePassword) {
   try {
     return await bcrypt.compare(candidatePassword, this.password)
@@ -125,7 +112,6 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   }
 }
 
-// Virtual for questionsCount
 userSchema.virtual("questionsCount", {
   ref: "Question",
   localField: "_id",
@@ -133,7 +119,6 @@ userSchema.virtual("questionsCount", {
   count: true,
 })
 
-// Virtual for answersCount
 userSchema.virtual("answersCount", {
   ref: "Answer",
   localField: "_id",
@@ -141,7 +126,6 @@ userSchema.virtual("answersCount", {
   count: true,
 })
 
-// Set virtuals to true in toJSON
 userSchema.set("toJSON", { virtuals: true })
 userSchema.set("toObject", { virtuals: true })
 

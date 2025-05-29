@@ -1,34 +1,8 @@
-import express from "express"
-import Question from "../models/Question.js"
-import Answer from "../models/Answer.js"
-import Vote from "../models/Vote.js"
-import User from "../models/User.js"
-import { auth } from "../middleware/auth.js"
+import Question from "../models/Question.model.js"
+import Answer from "../models/Answer.model.js"
+import Vote from "../models/Vote.model.js"
+import User from "../models/User.model.js"
 import { cache } from "../server.js"
-
-const router = express.Router()
-
-const cacheMiddleware =
-  (duration = 300) =>
-  (req, res, next) => {
-    if (req.method !== "GET" || req.headers.authorization) {
-      return next()
-    }
-
-    const key = `__express__${req.originalUrl || req.url}`
-    const cachedBody = cache.get(key)
-
-    if (cachedBody) {
-      return res.json(cachedBody)
-    } else {
-      const originalJson = res.json
-      res.json = function (body) {
-        cache.set(key, body, duration)
-        originalJson.call(this, body)
-      }
-      next()
-    }
-  }
 
 const clearCache = (pattern) => {
   const keys = cache.keys()
@@ -36,7 +10,7 @@ const clearCache = (pattern) => {
   matchingKeys.forEach((key) => cache.del(key))
 }
 
-router.get("/", cacheMiddleware(60), async (req, res) => {
+export const getQuestions = async (req, res) => {
   try {
     const page = Number.parseInt(req.query.page) || 1
     const limit = Number.parseInt(req.query.limit) || 10
@@ -143,9 +117,9 @@ router.get("/", cacheMiddleware(60), async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-router.get("/:id", cacheMiddleware(60), async (req, res) => {
+export const getQuestionById = async (req, res) => {
   try {
     const question = await Question.findById(req.params.id)
       .populate("author", "name avatar reputation")
@@ -164,9 +138,9 @@ router.get("/:id", cacheMiddleware(60), async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-router.post("/", auth, async (req, res) => {
+export const createQuestion = async (req, res) => {
   try {
     const { title, content, tags, category } = req.body
 
@@ -187,9 +161,9 @@ router.post("/", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-router.put("/:id", auth, async (req, res) => {
+export const updateQuestion = async (req, res) => {
   try {
     const { title, content, tags, category } = req.body
 
@@ -218,9 +192,9 @@ router.put("/:id", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-router.delete("/:id", auth, async (req, res) => {
+export const deleteQuestion = async (req, res) => {
   try {
     const question = await Question.findById(req.params.id)
 
@@ -245,9 +219,9 @@ router.delete("/:id", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-router.get("/:id/answers", cacheMiddleware(60), async (req, res) => {
+export const getQuestionAnswers = async (req, res) => {
   try {
     const answers = await Answer.find({ question: req.params.id })
       .sort({ upvotedBy: -1, createdAt: -1 })
@@ -258,9 +232,9 @@ router.get("/:id/answers", cacheMiddleware(60), async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-router.post("/:id/answers", auth, async (req, res) => {
+export const createAnswer = async (req, res) => {
   try {
     const { content } = req.body
 
@@ -284,9 +258,9 @@ router.post("/:id/answers", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-router.get("/:id/votes", auth, async (req, res) => {
+export const getAnswerVotes = async (req, res) => {
   try {
     const answers = await Answer.find({ question: req.params.id }).select("_id")
 
@@ -306,9 +280,9 @@ router.get("/:id/votes", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-router.get("/:id/related", cacheMiddleware(300), async (req, res) => {
+export const getRelatedQuestions = async (req, res) => {
   try {
     const question = await Question.findById(req.params.id).select("tags category")
     if (!question) {
@@ -328,6 +302,4 @@ router.get("/:id/related", cacheMiddleware(300), async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
-
-export default router
+}

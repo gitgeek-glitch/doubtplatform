@@ -1,12 +1,8 @@
-import express from "express"
-import Answer from "../models/Answer.js"
-import Question from "../models/Question.js"
-import Vote from "../models/Vote.js"
-import User from "../models/User.js"
-import { auth } from "../middleware/auth.js"
+import Answer from "../models/Answer.model.js"
+import Question from "../models/Question.model.js"
+import Vote from "../models/Vote.model.js"
+import User from "../models/User.model.js"
 import { cache } from "../server.js"
-
-const router = express.Router()
 
 const clearCache = (pattern) => {
   const keys = cache.keys()
@@ -14,7 +10,7 @@ const clearCache = (pattern) => {
   matchingKeys.forEach((key) => cache.del(key))
 }
 
-router.put("/:id", auth, async (req, res) => {
+export const updateAnswer = async (req, res) => {
   try {
     const { content } = req.body
 
@@ -38,9 +34,9 @@ router.put("/:id", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-router.delete("/:id", auth, async (req, res) => {
+export const deleteAnswer = async (req, res) => {
   try {
     const answer = await Answer.findById(req.params.id).populate('question')
 
@@ -74,9 +70,9 @@ router.delete("/:id", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
+}
 
-router.post("/:id/vote", auth, async (req, res) => {
+export const voteAnswer = async (req, res) => {
   try {
     const { value } = req.body
 
@@ -206,9 +202,9 @@ router.post("/:id/vote", auth, async (req, res) => {
       res.status(500).json({ message: error.message })
     }
   }
-})
+}
 
-router.post("/:id/accept", auth, async (req, res) => {
+export const acceptAnswer = async (req, res) => {
   try {
     const answer = await Answer.findById(req.params.id)
     if (!answer) {
@@ -257,6 +253,4 @@ router.post("/:id/accept", auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
-})
-
-export default router
+}
