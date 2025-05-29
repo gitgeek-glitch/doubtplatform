@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { MessageSquare, Calendar, Edit, ArrowUp, TrendingUp } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { generateAvatar } from "@/lib/avatar"
+import { useTheme } from "@/components/theme-provider"
 
 const ROLE_THRESHOLDS = {
   NEWBIE: 0,
@@ -18,12 +19,10 @@ interface ProfileHeaderProps {
 }
 
 export default function ProfileHeader({ user, isOwnProfile, userVotesDistribution }: ProfileHeaderProps) {
-  const getBadgeColor = (badge: string): string => {
-    if (badge.includes("Gold")) return "profile-badge-gold"
-    if (badge.includes("Silver")) return "profile-badge-silver"
-    if (badge.includes("Bronze")) return "profile-badge-bronze"
-    return "bg-purple-600"
-  }
+  const { theme } = useTheme()
+  const isDarkMode = theme === "dark"
+  const avatarSrc = user?.email ? generateAvatar(user.email, isDarkMode) : null
+
 
   const getRoleBadgeColor = (role: string): string => {
     switch (role) {
@@ -72,7 +71,6 @@ export default function ProfileHeader({ user, isOwnProfile, userVotesDistributio
   }
 
   const roleProgress = calculateRoleProgress()
-  const avatarSrc = generateAvatar(user.email, true)
 
   return (
     <div className="relative">
@@ -81,7 +79,7 @@ export default function ProfileHeader({ user, isOwnProfile, userVotesDistributio
       <div className="profile-header-content">
         <div className="profile-avatar">
           <img 
-            src={avatarSrc} 
+            src={avatarSrc || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}&size=128`} 
             alt={user.name}
             className="w-32 h-32 rounded-full border-4 border-white shadow-lg"
           />
@@ -132,8 +130,6 @@ export default function ProfileHeader({ user, isOwnProfile, userVotesDistributio
           )}
 
           <div className="profile-stats">
-            
-
             <div className="profile-stat">
               <MessageSquare className="profile-stat-icon" />
               <span className="profile-stat-value">{user.questionsCount}</span>
@@ -153,16 +149,6 @@ export default function ProfileHeader({ user, isOwnProfile, userVotesDistributio
               </span>
             </div>
           </div>
-
-          {user.badges && user.badges.length > 0 && (
-            <div className="profile-badges">
-              {user.badges.map((badge: string, index: number) => (
-                <Badge key={index} className={getBadgeColor(badge)}>
-                  {badge}
-                </Badge>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

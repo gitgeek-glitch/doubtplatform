@@ -19,6 +19,7 @@ import { Search, Menu, X, LogOut, User, Settings, Moon, Sun } from 'lucide-react
 import { useTheme } from "@/components/theme-provider"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { generateAvatar } from "@/lib/avatar"
 
 export default function Navbar() {
   const { user, isAuthenticated } = useAppSelector(state => state.auth)
@@ -32,6 +33,8 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
 
   const isHomePage = location.pathname === "/home"
+  const isDarkMode = theme === "dark"
+  const avatarSrc = user?.email ? generateAvatar(user.email, isDarkMode) : null
 
   useEffect(() => {
     const handleScroll = () => {
@@ -115,7 +118,7 @@ export default function Navbar() {
                   <DropdownMenuTrigger className="focus:outline-none">
                     <div className="navbar-avatar-container">
                       <Avatar className="h-8 w-8 cursor-pointer">
-                        <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name} />
+                        <AvatarImage src={avatarSrc || ""} alt={user?.name} />
                         <AvatarFallback className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
                           {user?.name?.charAt(0).toUpperCase()}
                         </AvatarFallback>
@@ -125,7 +128,7 @@ export default function Navbar() {
                   <DropdownMenuContent className="navbar-dropdown" align="end">
                     <div className="navbar-dropdown-user">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name} />
+                        <AvatarImage src={avatarSrc || ""} alt={user?.name} />
                         <AvatarFallback className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
                           {user?.name?.charAt(0).toUpperCase()}
                         </AvatarFallback>
@@ -206,7 +209,7 @@ export default function Navbar() {
                 <>
                   <div className="navbar-mobile-user">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name} />
+                      <AvatarImage src={avatarSrc || ""} alt={user?.name} />
                       <AvatarFallback className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
                         {user?.name?.charAt(0).toUpperCase()}
                       </AvatarFallback>
