@@ -36,7 +36,7 @@ export function QuestionContent({ question }: QuestionContentProps) {
               </p>
               <Link 
                 to={`/profile/${question.author._id}`} 
-                className="question-detail-author-link text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                className="question-detail-author-link"
               >
                 {question.author.name}
               </Link>

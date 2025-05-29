@@ -1,43 +1,33 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useAppSelector } from "@/redux/hooks"
 import { useLocomotiveScroll } from "@/context/locomotive-context"
-import { ArrowRight, Code, Brain, Zap, ChevronDown } from 'lucide-react'
+import { ArrowRight, MessageSquarePlus, Users, Trophy, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ThreeBackground } from "@/components/three-background"
 
 export default function LandingPage() {
   const { scroll } = useLocomotiveScroll()
-  const { isAuthenticated } = useAppSelector(state => state.auth)
+  const { isAuthenticated } = useAppSelector((state) => state.auth)
   const navigate = useNavigate()
-  const videoRef = useRef<HTMLVideoElement>(null)
   const [isLoaded, setIsLoaded] = useState(false)
 
-  // Redirect authenticated users to home
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/home')
+      navigate("/home")
     }
   }, [isAuthenticated, navigate])
 
   useEffect(() => {
-    // Initialize animations after component mounts
     const timer = setTimeout(() => {
       setIsLoaded(true)
     }, 100)
 
-    // Play video when it's ready
-    if (videoRef.current) {
-      videoRef.current.play().catch((error) => {
-        console.error("Video autoplay failed:", error)
-      })
-    }
-
     return () => clearTimeout(timer)
   }, [])
 
-  // Scroll to the next section
   const scrollToContent = () => {
     if (scroll) {
       scroll.scrollTo("#features", {
@@ -49,31 +39,25 @@ export default function LandingPage() {
 
   return (
     <div className="landing-container">
-      {/* Hero Section */}
       <section className="landing-hero" data-scroll-section>
         <div className="landing-hero-content" data-scroll data-scroll-speed="0.3">
           <h1 className={`landing-hero-title ${isLoaded ? "animate-in" : ""}`} data-scroll data-scroll-delay="0.1">
-            <span className="text-gradient">DoubtSolve</span> Platform
+            <span className="text-gradient">CollegeQuora</span>
           </h1>
           <p className={`landing-hero-subtitle ${isLoaded ? "animate-in" : ""}`} data-scroll data-scroll-delay="0.2">
             Where knowledge meets collaboration. The ultimate platform for students to ask questions, share knowledge,
-            and grow together.
+            and grow together in their academic journey.
           </p>
           <div className={`landing-hero-buttons ${isLoaded ? "animate-in" : ""}`} data-scroll data-scroll-delay="0.3">
             <Button asChild className="landing-hero-button-primary">
               <Link to="/auth">Get Started</Link>
-            </Button>
-            <Button asChild variant="outline" className="landing-hero-button-secondary">
-              <Link to="/auth">Learn More</Link>
             </Button>
           </div>
         </div>
 
         <div className="landing-hero-visual" data-scroll data-scroll-speed="-0.2">
           <div className={`landing-hero-visual-inner ${isLoaded ? "animate-in" : ""}`}>
-            <video ref={videoRef} className="landing-hero-video" autoPlay loop muted playsInline preload="auto">
-              <source src="/videos/particles.mp4" type="video/mp4" />
-            </video>
+            <ThreeBackground />
             <div className="landing-hero-overlay"></div>
           </div>
         </div>
@@ -84,49 +68,50 @@ export default function LandingPage() {
         </button>
       </section>
 
-      {/* Features Section */}
       <section id="features" className="landing-features" data-scroll-section>
         <div className="landing-section-header" data-scroll data-scroll-speed="0.1">
           <h2 className="landing-section-title">
-            Powerful <span className="text-gradient">Features</span>
+            How <span className="text-gradient">It Works</span>
           </h2>
-          <p className="landing-section-subtitle">Everything you need to solve your academic doubts</p>
+          <p className="landing-section-subtitle">Simple steps to academic success</p>
         </div>
 
         <div className="landing-features-grid">
           <div className="landing-feature-card" data-scroll data-scroll-speed="0.2">
             <div className="landing-feature-icon">
-              <Code className="h-8 w-8" />
+              <MessageSquarePlus className="h-8 w-8" />
             </div>
-            <h3 className="landing-feature-title">Code Sharing</h3>
+            <h3 className="landing-feature-title">Post Questions</h3>
             <p className="landing-feature-description">
-              Share code snippets with syntax highlighting and get specific feedback on your implementations.
+              Students can easily post their academic questions with detailed descriptions, code snippets, and
+              attachments to get help from the community.
             </p>
           </div>
 
           <div className="landing-feature-card" data-scroll data-scroll-speed="0.3">
             <div className="landing-feature-icon">
-              <Brain className="h-8 w-8" />
+              <Users className="h-8 w-8" />
             </div>
-            <h3 className="landing-feature-title">Expert Answers</h3>
+            <h3 className="landing-feature-title">Peer Answers</h3>
             <p className="landing-feature-description">
-              Get answers from peers and experts in your field, with reputation-based validation.
+              Fellow students and experts provide detailed answers, explanations, and solutions to help each other learn
+              and grow academically.
             </p>
           </div>
 
           <div className="landing-feature-card" data-scroll data-scroll-speed="0.4">
             <div className="landing-feature-icon">
-              <Zap className="h-8 w-8" />
+              <Trophy className="h-8 w-8" />
             </div>
-            <h3 className="landing-feature-title">Real-time Collaboration</h3>
+            <h3 className="landing-feature-title">Leaderboard System</h3>
             <p className="landing-feature-description">
-              Engage in real-time discussions to solve complex problems together with your peers.
+              Upvote and downvote answers based on quality. Top contributors with the highest-rated answers get featured
+              on the leaderboard.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Interactive Demo Section */}
       <section className="landing-demo" data-scroll-section>
         <div className="landing-demo-container">
           <div className="landing-demo-content" data-scroll data-scroll-speed="0.2">
@@ -152,77 +137,91 @@ export default function LandingPage() {
                   <span></span>
                   <span></span>
                 </div>
-                <div className="landing-demo-browser-address">doubtsolve.edu</div>
+                <div className="landing-demo-browser-address">collegequora.edu</div>
               </div>
               <div className="landing-demo-browser-content">
-                <img
-                  src="/images/platform-demo.png"
-                  alt="DoubtSolve Platform Demo"
-                  className="landing-demo-image"
-                  data-scroll
-                  data-scroll-speed="0.05"
-                />
+                <div className="landing-demo-mockup">
+                  <div className="demo-header">
+                    <div className="demo-nav">
+                      <div className="demo-logo"></div>
+                      <div className="demo-search"></div>
+                      <div className="demo-profile"></div>
+                    </div>
+                  </div>
+                  <div className="demo-content">
+                    <div className="demo-sidebar">
+                      <div className="demo-menu-item active"></div>
+                      <div className="demo-menu-item"></div>
+                      <div className="demo-menu-item"></div>
+                      <div className="demo-menu-item"></div>
+                    </div>
+                    <div className="demo-main">
+                      <div className="demo-question-card">
+                        <div className="demo-vote-section">
+                          <div className="demo-vote-btn up"></div>
+                          <div className="demo-vote-count">42</div>
+                          <div className="demo-vote-btn down"></div>
+                        </div>
+                        <div className="demo-question-content">
+                          <div className="demo-question-title"></div>
+                          <div className="demo-question-text"></div>
+                          <div className="demo-question-tags">
+                            <div className="demo-tag">JavaScript</div>
+                            <div className="demo-tag">React</div>
+                            <div className="demo-tag">Hooks</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="demo-question-card">
+                        <div className="demo-vote-section">
+                          <div className="demo-vote-btn up"></div>
+                          <div className="demo-vote-count">28</div>
+                          <div className="demo-vote-btn down"></div>
+                        </div>
+                        <div className="demo-question-content">
+                          <div className="demo-question-title"></div>
+                          <div className="demo-question-text"></div>
+                          <div className="demo-question-tags">
+                            <div className="demo-tag">Python</div>
+                            <div className="demo-tag">Data Science</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="demo-right-sidebar">
+                      <div className="demo-leaderboard">
+                        <div className="demo-leaderboard-title">Top Contributors</div>
+                        <div className="demo-contributor">
+                          <div className="demo-rank gold">1</div>
+                          <div className="demo-contributor-info"></div>
+                        </div>
+                        <div className="demo-contributor">
+                          <div className="demo-rank silver">2</div>
+                          <div className="demo-contributor-info"></div>
+                        </div>
+                        <div className="demo-contributor">
+                          <div className="demo-rank bronze">3</div>
+                          <div className="demo-contributor-info"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Parallax Section */}
-      <section className="landing-parallax" data-scroll-section>
-        <div className="landing-parallax-layers">
-          <div className="landing-parallax-layer landing-parallax-bg" data-scroll data-scroll-speed="-0.5"></div>
-          <div className="landing-parallax-layer landing-parallax-mid" data-scroll data-scroll-speed="-0.2"></div>
-          <div className="landing-parallax-layer landing-parallax-front" data-scroll data-scroll-speed="0.1"></div>
-          <div className="landing-parallax-content" data-scroll data-scroll-speed="0.3">
-            <h2 className="landing-parallax-title">Ready to solve your doubts?</h2>
-            <Button asChild size="lg" className="landing-parallax-button">
-              <Link to="/auth">Get Started</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Community Section */}
-      <section className="landing-community" data-scroll-section>
-        <div className="landing-section-header" data-scroll data-scroll-speed="0.1">
-          <h2 className="landing-section-title">
-            Join Our <span className="text-gradient">Community</span>
-          </h2>
-          <p className="landing-section-subtitle">Connect with students from top institutions across the country</p>
-        </div>
-
-        <div className="landing-community-grid">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="landing-community-card" data-scroll data-scroll-speed={`0.${i}`}>
-              <div className="landing-community-image">
-                <img
-                  src={`/images/community-${i}.jpg`}
-                  alt={`Community member ${i}`}
-                  className="landing-community-avatar"
-                />
-              </div>
-              <div className="landing-community-quote">
-                <p>"DoubtSolve helped me understand complex concepts through peer explanations."</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA Section */}
       <section className="landing-cta" data-scroll-section>
         <div className="landing-cta-container" data-scroll data-scroll-speed="0.1">
-          <h2 className="landing-cta-title">Start your learning journey today</h2>
+          <h2 className="landing-cta-title">Start your academic journey today</h2>
           <p className="landing-cta-subtitle">
-            Join thousands of students already using DoubtSolve to accelerate their learning
+            Join students who use CollegeQuora to accelerate their learning
           </p>
           <div className="landing-cta-buttons">
             <Button asChild size="lg" className="landing-cta-button-primary">
               <Link to="/auth">Sign Up Now</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="landing-cta-button-secondary">
-              <Link to="/auth">Learn More</Link>
             </Button>
           </div>
         </div>

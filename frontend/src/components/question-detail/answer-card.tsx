@@ -126,7 +126,7 @@ export function AnswerCard({
                   </p>
                   <Link 
                     to={`/profile/${answer.author._id}`} 
-                    className="question-detail-author-link text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                    className="question-detail-author-link text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300"
                   >
                     {answer.author.name}
                   </Link>

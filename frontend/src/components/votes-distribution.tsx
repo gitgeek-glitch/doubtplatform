@@ -1,3 +1,5 @@
+"use client"
+
 import { useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
@@ -5,34 +7,28 @@ import { fetchUserVotesDistribution } from "@/redux/thunks/usersThunks"
 import { fetchLeaderboard } from "@/redux/thunks/leaderboardThunks"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowUp, ArrowDown, Users } from "lucide-react"
+import { ArrowUp, ArrowDown, Users } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
 
 interface VotesDistributionProps {
-  communityView?: boolean;
+  communityView?: boolean
   userData?: {
-    answerUpvotes: number;
-    answerDownvotes: number;
-  };
+    answerUpvotes: number
+    answerDownvotes: number
+  }
 }
 
-export default function VotesDistribution({ 
-  communityView = false,
-  userData
-}: VotesDistributionProps) {
+export default function VotesDistribution({ communityView = false, userData }: VotesDistributionProps) {
   const { id } = useParams<{ id: string }>()
   const dispatch = useAppDispatch()
-  
-  const { 
-    userVotesDistribution, 
-    votesLoading  
-  } = useAppSelector((state) => state.users)
-  
-  const { 
-    totalUpvotes, 
-    totalDownvotes, 
-    loading: leaderboardLoading, 
-    lastFetched 
+
+  const { userVotesDistribution, votesLoading } = useAppSelector((state) => state.users)
+
+  const {
+    totalUpvotes,
+    totalDownvotes,
+    loading: leaderboardLoading,
+    lastFetched,
   } = useAppSelector((state) => state.leaderboard)
 
   const isProfileMode = !communityView && !!id
@@ -49,31 +45,31 @@ export default function VotesDistribution({
 
   const getChartData = () => {
     if (isProfileMode) {
-      const data = userData || userVotesDistribution;
+      const data = userData || userVotesDistribution
       if (data) {
         return [
-          { name: "Answer Upvotes", value: Number(data.answerUpvotes) || 0, color: "#9333ea" },
-          { name: "Answer Downvotes", value: Number(data.answerDownvotes) || 0, color: "#e11d48" },
-        ];
+          { name: "Answer Upvotes", value: Number(data.answerUpvotes) || 0, color: "hsl(var(--chart-1))" },
+          { name: "Answer Downvotes", value: Number(data.answerDownvotes) || 0, color: "hsl(var(--destructive))" },
+        ]
       }
     } else if (!isProfileMode) {
       return [
-        { name: "Total Upvotes", value: totalUpvotes, color: "#9333ea" },
-        { name: "Total Downvotes", value: totalDownvotes, color: "#e11d48" },
-      ];
+        { name: "Total Upvotes", value: totalUpvotes, color: "hsl(var(--chart-1))" },
+        { name: "Total Downvotes", value: totalDownvotes, color: "hsl(var(--destructive))" },
+      ]
     }
-    return [];
-  };
+    return []
+  }
 
   const pieData = getChartData()
-  
-  const totalVotes = isProfileMode
-    ? (userData?.answerUpvotes || 0) + (userData?.answerDownvotes || 0) || 
-      (userVotesDistribution?.answerUpvotes || 0) + (userVotesDistribution?.answerDownvotes || 0)
-    : totalUpvotes + totalDownvotes;
 
-  const isLoading = (!userData && isProfileMode) ? votesLoading : leaderboardLoading
-  const hasData = isProfileMode ? !!votesData : (totalUpvotes > 0 || totalDownvotes > 0)
+  const totalVotes = isProfileMode
+    ? (userData?.answerUpvotes || 0) + (userData?.answerDownvotes || 0) ||
+      (userVotesDistribution?.answerUpvotes || 0) + (userVotesDistribution?.answerDownvotes || 0)
+    : totalUpvotes + totalDownvotes
+
+  const isLoading = !userData && isProfileMode ? votesLoading : leaderboardLoading
+  const hasData = isProfileMode ? !!votesData : totalUpvotes > 0 || totalDownvotes > 0
 
   return (
     <Card className="votes-distribution-card">
@@ -116,19 +112,18 @@ export default function VotesDistribution({
                   <Tooltip
                     formatter={(value) => [`${value} votes`, ""]}
                     contentStyle={{
-                      backgroundColor: "hsl(var(--background))",
-                      borderColor: "hsl(var(--border))",
+                      backgroundColor: "var(--tooltip-background)",
+                      borderColor: "var(--tooltip-border)",
                       borderRadius: "0.5rem",
-                      color: "hsl(var(--foreground))",
-                      border: "1px solid hsl(var(--border))"
+                      color: "var(--tooltip-foreground)",
+                      border: "1px solid var(--tooltip-border)",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
                     }}
                   />
                   <Legend
                     verticalAlign="bottom"
                     height={36}
-                    formatter={(value) => (
-                      <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>
-                    )}
+                    formatter={(value) => <span style={{ color: "hsl(var(--foreground))" }}>{value}</span>}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -136,7 +131,7 @@ export default function VotesDistribution({
                 <ArrowUp className="votes-distribution-icon votes-distribution-icon-up" />
                 <span>
                   {isProfileMode
-                    ? `${(userData?.answerUpvotes || userVotesDistribution?.answerUpvotes || 0)} upvotes`
+                    ? `${userData?.answerUpvotes || userVotesDistribution?.answerUpvotes || 0} upvotes`
                     : `${totalUpvotes} upvotes`}
                 </span>
               </div>
@@ -144,7 +139,7 @@ export default function VotesDistribution({
                 <ArrowDown className="votes-distribution-icon votes-distribution-icon-down" />
                 <span>
                   {isProfileMode
-                    ? `${(userData?.answerDownvotes || userVotesDistribution?.answerDownvotes || 0)} downvotes`
+                    ? `${userData?.answerDownvotes || userVotesDistribution?.answerDownvotes || 0} downvotes`
                     : `${totalDownvotes} downvotes`}
                 </span>
               </div>

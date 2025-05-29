@@ -1,6 +1,7 @@
+"use client"
+
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { MessageSquare, Calendar, Edit, ArrowUp, TrendingUp } from "lucide-react"
+import { MessageSquare, Calendar, ArrowUp, TrendingUp } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { generateAvatar } from "@/lib/avatar"
 import { useTheme } from "@/components/theme-provider"
@@ -18,23 +19,22 @@ interface ProfileHeaderProps {
   userVotesDistribution: any
 }
 
-export default function ProfileHeader({ user, isOwnProfile, userVotesDistribution }: ProfileHeaderProps) {
+export default function ProfileHeader({ user, userVotesDistribution }: ProfileHeaderProps) {
   const { theme } = useTheme()
   const isDarkMode = theme === "dark"
   const avatarSrc = user?.email ? generateAvatar(user.email, isDarkMode) : null
 
-
   const getRoleBadgeColor = (role: string): string => {
     switch (role) {
       case "Master":
-        return "bg-amber-500 text-white"
+        return "bg-amber-500 text-white hover:bg-amber-500"
       case "Expert":
-        return "bg-blue-500 text-white"
+        return "bg-teal-500 text-white hover:bg-teal-500"
       case "Intermediate":
-        return "bg-green-500 text-white"
+        return "bg-emerald-500 text-white hover:bg-emerald-500"
       case "Newbie":
       default:
-        return "bg-gray-500 text-white"
+        return "bg-muted text-muted-foreground hover:bg-muted"
     }
   }
 
@@ -78,29 +78,22 @@ export default function ProfileHeader({ user, isOwnProfile, userVotesDistributio
 
       <div className="profile-header-content">
         <div className="profile-avatar">
-          <img 
-            src={avatarSrc || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}&size=128`} 
+          <img
+            src={avatarSrc || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}&size=128`}
             alt={user.name}
-            className="w-32 h-32 rounded-full border-4 border-white shadow-lg"
+            className="w-full h-full rounded-full border-4 border-background shadow-lg object-cover"
           />
         </div>
 
         <div className="profile-info">
           <div className="profile-name-row">
             <div>
-              <h1 className="profile-name text-white">{user.name}</h1>
+              <h1 className="profile-name">{user.name}</h1>
               <div className="flex items-center gap-2 mt-1">
-                <p className="profile-username text-white">@{user.email.split("@")[0]}</p>
+                <p className="profile-username">@{user.email.split("@")[0]}</p>
                 <Badge className={getRoleBadgeColor(user.role)}>{user.role}</Badge>
               </div>
             </div>
-
-            {isOwnProfile && (
-              <Button variant="outline" className="profile-edit-button text-white">
-                <Edit className="h-4 w-4 mr-2 text-white" />
-                Edit Profile
-              </Button>
-            )}
           </div>
 
           {user.bio && <p className="profile-bio">{user.bio}</p>}
@@ -117,9 +110,9 @@ export default function ProfileHeader({ user, isOwnProfile, userVotesDistributio
                   {user.role === "Newbie" ? 100 : user.role === "Intermediate" ? 500 : 1000}
                 </span>
               </div>
-              <div className="w-full bg-gray-300 dark:bg-gray-700 rounded-full h-2.5">
+              <div className="w-full bg-muted rounded-full h-2.5">
                 <div
-                  className="bg-purple-600 h-2.5 rounded-full"
+                  className="bg-primary h-2.5 rounded-full transition-all duration-300"
                   style={{ width: `${roleProgress.progress}%` }}
                 ></div>
               </div>

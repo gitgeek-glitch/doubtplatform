@@ -15,14 +15,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Search, Menu, X, LogOut, User, Settings, Moon, Sun } from 'lucide-react'
+import { Search, Menu, X, LogOut, User, Moon, Sun } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { generateAvatar } from "@/lib/avatar"
+import { CollegeQuoraLogo } from "@/components/college-quora-logo"
 
 export default function Navbar() {
-  const { user, isAuthenticated } = useAppSelector(state => state.auth)
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth)
   const { theme, setTheme } = useTheme()
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
@@ -79,10 +80,8 @@ export default function Navbar() {
       <div className="navbar-container">
         <div className="flex items-center gap-4">
           <a href="#" onClick={handleLogoClick} className="navbar-logo">
-            <div className="navbar-logo-icon">
-              <span className="text-lg font-bold text-white">DS</span>
-            </div>
-            <span className="navbar-logo-text">DoubtSolve</span>
+            <CollegeQuoraLogo className="h-8 w-8" />
+            <span className="navbar-logo-text">CollegeQuora</span>
           </a>
 
           {isAuthenticated && isHomePage && (
@@ -101,7 +100,7 @@ export default function Navbar() {
             </form>
           )}
         </div>
-        
+
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={toggleTheme} className="navbar-theme-toggle">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -109,7 +108,7 @@ export default function Navbar() {
 
           {isAuthenticated ? (
             <>
-              <Button variant="default" className="navbar-button" onClick={() => navigate("/ask")}>
+              <Button variant="default" className="navbar-button text-white" onClick={() => navigate("/ask")}>
                 Ask Question
               </Button>
 
@@ -119,7 +118,7 @@ export default function Navbar() {
                     <div className="navbar-avatar-container">
                       <Avatar className="h-8 w-8 cursor-pointer">
                         <AvatarImage src={avatarSrc || ""} alt={user?.name} />
-                        <AvatarFallback className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
+                        <AvatarFallback className="bg-gradient-to-br">
                           {user?.name?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -129,7 +128,7 @@ export default function Navbar() {
                     <div className="navbar-dropdown-user">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={avatarSrc || ""} alt={user?.name} />
-                        <AvatarFallback className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
+                        <AvatarFallback className="bg-gradient-to-br">
                           {user?.name?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -146,10 +145,6 @@ export default function Navbar() {
                       <User className="mr-2 h-4 w-4" />
                       <span>Profile</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="navbar-dropdown-item">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 h-px bg-gray-300 dark:bg-gray-800" />
                     <DropdownMenuItem onClick={handleLogout} className="navbar-dropdown-item-danger">
                       <LogOut className="mr-2 h-4 w-4" />
@@ -160,7 +155,7 @@ export default function Navbar() {
               </div>
             </>
           ) : (
-            <Button variant="default" className="navbar-button" onClick={() => navigate("/auth")}>
+            <Button variant="default" className="navbar-button text-white" onClick={() => navigate("/auth")}>
               Sign In
             </Button>
           )}
@@ -196,7 +191,7 @@ export default function Navbar() {
             <div className="flex flex-col gap-3">
               <Button
                 variant="default"
-                className="navbar-mobile-button"
+                className="navbar-mobile-button text-white"
                 onClick={() => {
                   navigate("/ask")
                   setMobileMenuOpen(false)
@@ -210,7 +205,7 @@ export default function Navbar() {
                   <div className="navbar-mobile-user">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={avatarSrc || ""} alt={user?.name} />
-                      <AvatarFallback className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
+                      <AvatarFallback className="bg-gradient-to-br">
                         {user?.name?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -229,12 +224,8 @@ export default function Navbar() {
                         setMobileMenuOpen(false)
                       }}
                     >
-                      <User className="mr-3 h-5 w-5 text-purple-400" />
+                      <User className="mr-3 h-5 w-5" />
                       Profile
-                    </Button>
-                    <Button variant="ghost" className="navbar-mobile-menu-item">
-                      <Settings className="mr-3 h-5 w-5 text-purple-400" />
-                      Settings
                     </Button>
                     <Button
                       variant="ghost"
@@ -245,7 +236,7 @@ export default function Navbar() {
                         navigate("/")
                       }}
                     >
-                      <LogOut className="mr-3 h-5 w-5 text-red-400" />
+                      <LogOut className="mr-3 h-5 w-5" />
                       Log out
                     </Button>
                   </div>
@@ -253,7 +244,7 @@ export default function Navbar() {
               ) : (
                 <Button
                   variant="default"
-                  className="navbar-mobile-button"
+                  className="navbar-mobile-button text-white"
                   onClick={() => {
                     navigate("/auth")
                     setMobileMenuOpen(false)

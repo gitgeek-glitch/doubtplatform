@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import QuestionCard from "@/components/question-card"
-import AnswerCard from "@/components/profile/AnswerCard"
+import { AnswerCard } from "@/components/question-detail/answer-card"
 
 interface ProfileTabsProps {
   questions: any[]
@@ -34,7 +34,21 @@ export default function ProfileTabs({ questions, answers, activeTab, setActiveTa
 
       <TabsContent value="answers" className="profile-content">
         {answers.length > 0 ? (
-          answers.map((answer: any) => <AnswerCard key={answer._id} answer={answer} />)
+          answers.map((answer: any) => (
+            <AnswerCard
+              key={answer._id}
+              answer={answer}
+              question={answer.question}
+              currentUserVote={answer.currentUserVote}
+              user={answer.user}
+              isAuthenticated={answer.isAuthenticated}
+              isVoting={false}
+              isDeleting={false}
+              onVote={() => {}}
+              onAccept={() => {}}
+              onDelete={() => {}}
+            />
+          ))
         ) : (
           <div className="profile-empty-state">
             <p className="text-muted-foreground">No answers provided yet</p>
