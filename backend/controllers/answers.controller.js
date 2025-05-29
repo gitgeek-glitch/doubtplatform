@@ -90,117 +90,81 @@ export const voteAnswer = async (req, res) => {
     }
 
     const userId = req.user.id
-    const hasUpvoted = answer.upvotedBy.includes(userId)
-    const hasDownvoted = answer.downvotedBy.includes(userId)
-    
-    let oldValue = 0
-    if (hasUpvoted) oldValue = 1
-    if (hasDownvoted) oldValue = -1
 
-    if (value === 1) {
-      if (hasDownvoted) {
+    const existingVote = await Vote.findOne({
+      user: userId,
+      answer: req.params.id
+    })
+
+    const oldValue = existingVote ? existingVote.value : 0
+
+    if (value === 0) {
+      if (existingVote) {
+        await Vote.deleteOne({ _id: existingVote._id })
+      }
+      await Answer.findByIdAndUpdate(req.params.id, {
+        $pull: { upvotedBy: userId, downvotedBy: userId }
+      })
+    } else {
+      if (existingVote) {
+        existingVote.value = value
+        await existingVote.save()
+      } else {
+        await Vote.create({
+          user: userId,
+          answer: req.params.id,
+          value
+        })
+      }
+
+      if (value === 1) {
         await Answer.findByIdAndUpdate(req.params.id, {
           $pull: { downvotedBy: userId },
           $addToSet: { upvotedBy: userId }
         })
-      } else if (!hasUpvoted) {
-        await Answer.findByIdAndUpdate(req.params.id, {
-          $addToSet: { upvotedBy: userId }
-        })
-      }
-    } else if (value === -1) {
-      if (hasUpvoted) {
+      } else if (value === -1) {
         await Answer.findByIdAndUpdate(req.params.id, {
           $pull: { upvotedBy: userId },
           $addToSet: { downvotedBy: userId }
         })
-      } else if (!hasDownvoted) {
-        await Answer.findByIdAndUpdate(req.params.id, {
-          $addToSet: { downvotedBy: userId }
-        })
-      }
-    } else if (value === 0) {
-      await Answer.findByIdAndUpdate(req.params.id, {
-        $pull: { upvotedBy: userId, downvotedBy: userId }
-      })
-    }
-
-    let vote
-    try {
-      vote = await Vote.findOneAndUpdate(
-        {
-          user: req.user.id,
-          answer: req.params.id,
-        },
-        { value },
-        {
-          upsert: true,
-          new: true,
-          setDefaultsOnInsert: true,
-          runValidators: true,
-        },
-      )
-    } catch (duplicateError) {
-      if (duplicateError.code === 11000) {
-        const existingVote = await Vote.findOne({
-          user: req.user.id,
-          answer: req.params.id,
-        })
-
-        if (existingVote) {
-          existingVote.value = value
-          await existingVote.save()
-        } else if (value !== 0) {
-          await Vote.create({
-            user: req.user.id,
-            answer: req.params.id,
-            value
-          })
-        } else {
-          return res.status(409).json({
-            message: "Vote conflict detected. Please refresh and try again.",
-          })
-        }
-      } else {
-        throw duplicateError
       }
     }
 
     const voteDiff = value - oldValue
 
     if (voteDiff !== 0) {
-      User.findById(answer.author)
-        .then((author) => {
-          if (author) {
-            let repChange = 0
+      const author = await User.findById(answer.author)
+      if (author) {
+        let repChange = 0
 
-            if (voteDiff > 0) {
-              repChange = voteDiff === 1 ? (oldValue === -1 ? 12 : 10) : voteDiff === 2 ? 12 : voteDiff * 10
-            } else if (voteDiff < 0) {
-              repChange = voteDiff === -1 ? (oldValue === 1 ? -12 : -2) : voteDiff === -2 ? -12 : voteDiff * 2
-            }
+        if (voteDiff > 0) {
+          repChange = voteDiff === 1 ? (oldValue === -1 ? 12 : 10) : voteDiff === 2 ? 12 : voteDiff * 10
+        } else if (voteDiff < 0) {
+          repChange = voteDiff === -1 ? (oldValue === 1 ? -12 : -2) : voteDiff === -2 ? -12 : voteDiff * 2
+        }
 
-            if (repChange !== 0) {
-              author.reputation += repChange
-              return author.save()
-            }
-          }
-        })
-        .catch((err) => console.error("Error updating reputation:", err))
+        if (repChange !== 0) {
+          author.reputation += repChange
+          await author.save()
+        }
+      }
     }
 
     clearCache(`/api/questions/${answer.question}/answers`)
 
-    const updatedAnswer = await Answer.findById(req.params.id)
-    res.json({ vote, answer: updatedAnswer })
-  } catch (error) {
-    if (error.code === 11000) {
-      res.status(409).json({
-        message: "Duplicate vote detected. Please refresh the page and try again.",
-      })
-    } else {
-      res.status(500).json({ message: error.message })
+    const updatedAnswer = await Answer.findById(req.params.id).populate('upvotedBy downvotedBy', '_id')
+    const responseAnswer = {
+      ...updatedAnswer.toObject(),
+      upvotes: updatedAnswer.upvotedBy.length,
+      downvotes: updatedAnswer.downvotedBy.length
     }
+
+    res.json({ 
+      vote: { value }, 
+      answer: responseAnswer 
+    })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
   }
 }
 
@@ -228,19 +192,16 @@ export const acceptAnswer = async (req, res) => {
       Question.findByIdAndUpdate(question._id, { acceptedAnswer: answer._id, isSolved: true }, { new: true }),
     ])
 
-    User.findById(answer.author)
-      .then((author) => {
-        if (author) {
-          author.reputation += 15
+    const author = await User.findById(answer.author)
+    if (author) {
+      author.reputation += 15
 
-          if (!author.badges.includes("Problem Solver") && author.reputation >= 100) {
-            author.badges.push("Problem Solver")
-          }
+      if (!author.badges.includes("Problem Solver") && author.reputation >= 100) {
+        author.badges.push("Problem Solver")
+      }
 
-          return author.save()
-        }
-      })
-      .catch((err) => console.error("Error updating reputation:", err))
+      await author.save()
+    }
 
     clearCache(`/api/questions/${question._id}`)
     clearCache(`/api/questions/${question._id}/answers`)

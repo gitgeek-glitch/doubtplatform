@@ -85,10 +85,7 @@ export const fetchVotes = createAsyncThunk("questions/fetchVotes", async (questi
   try {
     const response = await api.get(`/questions/${questionId}/votes`)
     return {
-      answerVotes: response.data.answerVotes.reduce((acc: Record<string, number>, vote: any) => {
-        acc[vote.answerId] = vote.value
-        return acc
-      }, {}),
+      answerVotes: response.data.answerVotes || response.data || [],
     }
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || "Failed to fetch votes")
@@ -102,7 +99,7 @@ export const voteAnswer = createAsyncThunk(
       const response = await api.post(`/answers/${answerId}/vote`, { value })
       return {
         answerId,
-        vote: response.data.vote ? response.data.vote.value : value,
+        vote: response.data.vote || { value },
         answer: response.data.answer,
       }
     } catch (err: any) {

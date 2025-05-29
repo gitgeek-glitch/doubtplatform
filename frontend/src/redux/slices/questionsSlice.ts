@@ -110,12 +110,27 @@ const questionsSlice = createSlice({
 
           const updatedExistingAnswers = state.answers.map((existingAnswer) => {
             const freshAnswer = action.payload.answers.find((a: Answer) => a._id === existingAnswer._id)
-            return freshAnswer || existingAnswer
+            if (freshAnswer) {
+              return {
+                ...freshAnswer,
+                upvotes: freshAnswer.upvotes ?? freshAnswer.upvotedBy?.length ?? 0,
+                downvotes: freshAnswer.downvotes ?? freshAnswer.downvotedBy?.length ?? 0
+              }
+            }
+            return existingAnswer
           })
 
-          state.answers = [...updatedExistingAnswers, ...newAnswers]
+          state.answers = [...updatedExistingAnswers, ...newAnswers.map((answer: Answer) => ({
+            ...answer,
+            upvotes: answer.upvotes ?? answer.upvotedBy?.length ?? 0,
+            downvotes: answer.downvotes ?? answer.downvotedBy?.length ?? 0
+          }))]
         } else {
-          state.answers = action.payload.answers
+          state.answers = action.payload.answers.map((answer: Answer) => ({
+            ...answer,
+            upvotes: answer.upvotes ?? answer.upvotedBy?.length ?? 0,
+            downvotes: answer.downvotes ?? answer.downvotedBy?.length ?? 0
+          }))
         }
 
         state.relatedQuestions = action.payload.relatedQuestions
@@ -126,29 +141,40 @@ const questionsSlice = createSlice({
       })
 
       .addCase(fetchVotes.fulfilled, (state, action) => {
-        const votes = action.payload.answerVotes;
-        state.answerVotes = {};
-        for (const vote of votes) {
-          state.answerVotes[vote.answerId] = vote.value;
+        const votes = action.payload.answerVotes
+        
+        if (Array.isArray(votes)) {
+          votes.forEach((vote: any) => {
+            if (vote.answerId && typeof vote.value === 'number') {
+              state.answerVotes[vote.answerId] = vote.value
+            }
+          })
+        } else if (votes && typeof votes === 'object') {
+          Object.keys(votes).forEach(answerId => {
+            if (typeof votes[answerId] === 'number') {
+              state.answerVotes[answerId] = votes[answerId]
+            }
+          })
         }
       })
 
       .addCase(voteAnswer.fulfilled, (state, action) => {
-        const updatedAnswer = action.payload.answer;
-        const vote = action.payload.vote;
+        const { answerId, vote, answer } = action.payload
 
-        const index = state.answers.findIndex((a) => a._id === updatedAnswer._id);
-        if (index !== -1) {
+        const index = state.answers.findIndex((a) => a._id === answerId)
+        if (index !== -1 && answer) {
           state.answers[index] = {
             ...state.answers[index],
-            ...updatedAnswer,
-          };
+            upvotes: answer.upvotes ?? answer.upvotedBy?.length ?? 0,
+            downvotes: answer.downvotes ?? answer.downvotedBy?.length ?? 0,
+            upvotedBy: answer.upvotedBy || [],
+            downvotedBy: answer.downvotedBy || [],
+          }
         }
 
-        state.answerVotes = {
-          ...state.answerVotes,
-          [updatedAnswer._id]: vote?.value ?? 0,
-        };
+        if (vote && typeof vote.value === 'number') {
+          state.answerVotes[answerId] = vote.value
+        }
       })
 
       .addCase(acceptAnswer.fulfilled, (state, action) => {
@@ -166,7 +192,12 @@ const questionsSlice = createSlice({
       .addCase(submitAnswer.fulfilled, (state, action) => {
         const exists = state.answers.some((a) => a._id === action.payload._id)
         if (!exists) {
-          state.answers.push(action.payload)
+          const newAnswer = {
+            ...action.payload,
+            upvotes: action.payload.upvotes ?? action.payload.upvotedBy?.length ?? 0,
+            downvotes: action.payload.downvotes ?? action.payload.downvotedBy?.length ?? 0
+          }
+          state.answers.push(newAnswer)
 
           if (state.currentQuestion) {
             state.currentQuestion.answerCount += 1
