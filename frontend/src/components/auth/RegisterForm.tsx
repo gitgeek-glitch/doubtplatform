@@ -202,7 +202,7 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
       errors.email = "Email is required"
     } else if (!/\S+@\S+\.\S+/.test(registerData.email)) {
       errors.email = "Email is invalid"
-    } else if (!registerData.email.endsWith(".ac.in")) {
+    } else if (!(registerData.email.endsWith(".ac.in") || registerData.email.endsWith(".edu"))) {
       errors.email = "Please use your college email (ending with .ac.in)"
     }
 
@@ -383,7 +383,7 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
         </div>
         
         {validationErrors.email && <p className="auth-error-message">{validationErrors.email}</p>}
-        <p className="auth-hint">Must be your institutional email ending with .ac.in</p>
+        <p className="auth-hint">Must be your institutional email ending with .ac.in or .edu</p>
       </div>
 
       <div className="auth-field">

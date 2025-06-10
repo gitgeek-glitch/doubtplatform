@@ -167,7 +167,7 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Email and password are required" })
     }
 
-    if (!email.endsWith(".ac.in")) {
+    if (!(email.endsWith(".ac.in") || email.endsWith(".edu"))) {
       return res.status(400).json({ message: "Please use your college email" })
     }
 

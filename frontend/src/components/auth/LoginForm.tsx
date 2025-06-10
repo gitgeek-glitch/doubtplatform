@@ -40,7 +40,7 @@ export default function LoginForm({ isLoading, setLocalLoading, onSwitchTab }: L
       errors.email = "Email is required"
     } else if (!/\S+@\S+\.\S+/.test(loginData.email)) {
       errors.email = "Email is invalid"
-    } else if (!loginData.email.endsWith(".ac.in")) {
+    }else if (!(loginData.email.endsWith(".ac.in") || loginData.email.endsWith(".edu"))) {
       errors.email = "Please use your college email (ending with .ac.in)"
     }
 
