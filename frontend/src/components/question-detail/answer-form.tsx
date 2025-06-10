@@ -91,7 +91,7 @@ export function AnswerForm({ questionId, isAuthenticated, onAnswerSubmitted }: A
 
       <div className="flex justify-end">
         <Button
-          className="ask-question-submit"
+          className="ask-question-submit text-white"
           disabled={submitting || !isAuthenticated || !answerContent.trim() || isChecking}
           onClick={handleSubmitAnswer}
         >

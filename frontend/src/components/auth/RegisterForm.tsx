@@ -300,7 +300,7 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
             id="register-email"
             name="email"
             type="email"
-            placeholder="studentname.is22@bmsce.ac.in"
+            placeholder="Enter Your College Email"
             value={registerData.email}
             onChange={handleRegisterChange}
             className={cn(
@@ -433,7 +433,7 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
 
       <Button 
         type="submit" 
-        className="auth-submit" 
+        className="auth-submit text-white" 
         disabled={isLoading || !emailVerification.isEmailVerified}
       >
         {isLoading ? (

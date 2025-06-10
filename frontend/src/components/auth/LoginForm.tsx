@@ -101,7 +101,7 @@ export default function LoginForm({ isLoading, setLocalLoading, onSwitchTab }: L
           id="email"
           name="email"
           type="email"
-          placeholder="studentname.is22@bmsce.ac.in"
+          placeholder="Enter Your College Email"
           value={loginData.email}
           onChange={handleLoginChange}
           className={cn("auth-input", validationErrors.email && "auth-input-error")}
@@ -115,9 +115,9 @@ export default function LoginForm({ isLoading, setLocalLoading, onSwitchTab }: L
       <div className="auth-field">
         <div className="flex items-center justify-between">
           <Label htmlFor="password">Password</Label>
-          <Button variant="link" className="p-0 h-auto text-xs text-teal-400">
+          {/* <Button variant="link" className="p-0 h-auto text-xs text-teal-400">
             Forgot password?
-          </Button>
+          </Button> */}
         </div>
         <Input
           id="password"
@@ -136,7 +136,7 @@ export default function LoginForm({ isLoading, setLocalLoading, onSwitchTab }: L
 
       {error && <p className="auth-error-message">{error}</p>}
 
-      <Button type="submit" className="auth-submit" disabled={isLoading}>
+      <Button type="submit" className="auth-submit text-white" disabled={isLoading}>
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
