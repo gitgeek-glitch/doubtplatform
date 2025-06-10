@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       lowercase: true,
-      match: [/.+@.+\.ac\.in$/, "Please enter a valid college email address ending with .ac.in"],
+      match: [/.+@.+\.(ac\.in|edu)$/, "Please enter a valid college email address ending with .ac.in or .edu"],
     },
     password: {
       type: String,
