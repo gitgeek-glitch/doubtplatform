@@ -60,8 +60,8 @@ export default function AuthPage() {
         </Button>
 
         <div className="auth-header">
-          <h1 className="auth-title">Welcome to DoubtSolve</h1>
-          <p className="auth-subtitle">Your college doubt-solving platform</p>
+          <h1 className="auth-title">Welcome to CollegeQuora</h1>
+          <p className="auth-subtitle">Your college QnA platform</p>
         </div>
 
         <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
