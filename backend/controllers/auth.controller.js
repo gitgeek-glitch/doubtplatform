@@ -20,7 +20,7 @@ export const sendVerificationCode = async (req, res) => {
       })
     }
 
-    if (!email.endsWith(".ac.in")) {
+    if (!(email.endsWith(".ac.in") || email.endsWith(".edu"))) {
       return res.status(400).json({
         message: "Please use your college email ending with .ac.in",
         success: false,
@@ -125,7 +125,7 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "Please verify your email first" })
     }
 
-    if (!email.endsWith(".ac.in")) {
+    if (!(email.endsWith(".ac.in") || email.endsWith(".edu"))) {
       return res.status(400).json({ message: "Please use your college email" })
     }
 
