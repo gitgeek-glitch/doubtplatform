@@ -63,9 +63,9 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
   }, [registerData.password])
 
   useEffect(() => {
-    const isValidEmail = registerData.email && 
-                        /\S+@\S+\.\S+/.test(registerData.email) && 
-                        registerData.email.endsWith(".ac.in")
+    const isValidEmail = registerData.email &&
+    /\S+@\S+\.\S+/.test(registerData.email) &&
+    (registerData.email.endsWith(".ac.in") || registerData.email.endsWith(".edu"));
     
     setEmailVerification(prev => ({
       ...prev,
