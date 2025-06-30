@@ -302,7 +302,7 @@ export default function AskQuestionPage() {
           <p className="ask-question-hint">Include all the information someone would need to answer your question</p>
         </div>
 
-        <Button type="submit" className="ask-question-submit" disabled={loading || isChecking}>
+        <Button type="submit" className="ask-question-submit text-white" disabled={loading || isChecking}>
           {loading || isChecking ? "Processing..." : "Post Your Question"}
         </Button>
       </form>
