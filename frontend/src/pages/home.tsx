@@ -315,7 +315,7 @@ export default function HomePage() {
                     ? "Try a different search term or tag"
                     : "Be the first to ask a question!"}
               </p>
-              <Button onClick={() => navigate("/ask")} className="ask-question-submit mt-4">
+              <Button onClick={() => navigate("/ask")} className="ask-question-submit mt-4 text-white">
                 Ask a Question
               </Button>
             </div>
