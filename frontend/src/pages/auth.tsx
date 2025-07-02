@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import LoginForm from "@/components/auth/LoginForm"
 import RegisterForm from "@/components/auth/RegisterForm"
+import ForgotPasswordForm from "@/components/auth/forgot-password-form"
 
 export default function AuthPage() {
   const dispatch = useAppDispatch()
@@ -18,6 +19,7 @@ export default function AuthPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("login")
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [localLoading, setLocalLoading] = useState(false)
 
   useEffect(() => {
@@ -52,6 +54,34 @@ export default function AuthPage() {
     }
   }, [isFormLoading, toast, dispatch])
 
+  const handleBackToLogin = () => {
+    setShowForgotPassword(false)
+    setActiveTab("login")
+  }
+
+  if (showForgotPassword) {
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <Button variant="ghost" size="sm" onClick={handleBackToLogin} className="auth-back-link auth-back-button">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+          </Button>
+
+          <div className="auth-header">
+            <h1 className="auth-title">Reset Password</h1>
+            <p className="auth-subtitle">Enter your email to receive a reset code</p>
+          </div>
+
+          <ForgotPasswordForm
+            isLoading={isFormLoading}
+            setLocalLoading={setLocalLoading}
+            onBackToLogin={handleBackToLogin}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="auth-container">
       <div className="auth-card">
@@ -75,15 +105,16 @@ export default function AuthPage() {
           </TabsList>
 
           <TabsContent value="login" className="mt-6">
-            <LoginForm 
+            <LoginForm
               isLoading={isFormLoading}
               setLocalLoading={setLocalLoading}
               onSwitchTab={() => setActiveTab("register")}
+              onForgotPassword={() => setShowForgotPassword(true)}
             />
           </TabsContent>
 
           <TabsContent value="register" className="mt-6">
-            <RegisterForm 
+            <RegisterForm
               isLoading={isFormLoading}
               setLocalLoading={setLocalLoading}
               onSwitchTab={() => setActiveTab("login")}

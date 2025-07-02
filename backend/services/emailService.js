@@ -38,6 +38,7 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
 }
 
 const otpStore = new Map()
+const passwordResetOtpStore = new Map()
 
 export const generateOTP = () => {
   return crypto.randomInt(100000, 999999).toString()
@@ -94,6 +95,57 @@ export const sendOTP = async (email, otp) => {
   }
 }
 
+export const sendPasswordResetOTP = async (email, otp) => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error("Email credentials not configured. Please set EMAIL_USER and EMAIL_PASS environment variables.")
+  }
+
+  try {
+    const mailOptions = {
+      from: `"CollegeQuora" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "CollegeQuora - Password Reset Code",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">CollegeQuora</h1>
+            <p style="color: white; margin: 10px 0 0 0; opacity: 0.9;">Your College Doubt-Solving Platform</p>
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; margin-top: 20px;">
+            <h2 style="color: #333; margin-top: 0;">Password Reset Request</h2>
+            <p style="color: #666; font-size: 16px; line-height: 1.5;">
+              We received a request to reset your password. Please use the verification code below to reset your password:
+            </p>
+            
+            <div style="background: white; border: 2px dashed #e74c3c; padding: 20px; margin: 25px 0; text-align: center; border-radius: 8px;">
+              <span style="font-size: 32px; font-weight: bold; color: #e74c3c; letter-spacing: 3px;">${otp}</span>
+            </div>
+            
+            <p style="color: #666; font-size: 14px; margin-bottom: 0;">
+              This code will expire in 10 minutes. If you didn't request a password reset, please ignore this email and your password will remain unchanged.
+            </p>
+          </div>
+          
+          <div style="text-align: center; margin-top: 20px;">
+            <p style="color: #999; font-size: 12px;">
+              © 2025 CollegeQuora. All rights reserved.
+            </p>
+          </div>
+        </div>
+      `,
+      text: `Your CollegeQuora password reset code is: ${otp}. This code will expire in 10 minutes. If you didn't request this, please ignore this email.`,
+    }
+
+    const result = await transporter.sendMail(mailOptions)
+    console.log("Password reset email sent successfully:", result.messageId)
+    return result
+  } catch (error) {
+    console.error("Password reset email sending failed:", error)
+    throw new Error("Failed to send password reset email: " + error.message)
+  }
+}
+
 export const storeOTP = (email, otp) => {
   otpStore.set(email, {
     otp,
@@ -101,9 +153,27 @@ export const storeOTP = (email, otp) => {
     attempts: 0,
   })
 
-  setTimeout(() => {
-    otpStore.delete(email)
-  }, 10 * 60 * 1000)
+  setTimeout(
+    () => {
+      otpStore.delete(email)
+    },
+    10 * 60 * 1000,
+  )
+}
+
+export const storePasswordResetOTP = (email, otp) => {
+  passwordResetOtpStore.set(email, {
+    otp,
+    timestamp: Date.now(),
+    attempts: 0,
+  })
+
+  setTimeout(
+    () => {
+      passwordResetOtpStore.delete(email)
+    },
+    10 * 60 * 1000,
+  )
 }
 
 export const verifyOTP = (email, otp) => {
@@ -131,4 +201,31 @@ export const verifyOTP = (email, otp) => {
 
   otpStore.delete(email)
   return { success: true, message: "OTP verified successfully" }
+}
+
+export const verifyPasswordResetOTP = (email, otp) => {
+  const storedData = passwordResetOtpStore.get(email)
+
+  if (!storedData) {
+    return { success: false, message: "Reset code expired or not found" }
+  }
+
+  if (storedData.attempts >= 3) {
+    passwordResetOtpStore.delete(email)
+    return { success: false, message: "Too many failed attempts" }
+  }
+
+  const isExpired = Date.now() - storedData.timestamp > 10 * 60 * 1000
+  if (isExpired) {
+    passwordResetOtpStore.delete(email)
+    return { success: false, message: "Reset code has expired" }
+  }
+
+  if (storedData.otp !== otp) {
+    storedData.attempts++
+    return { success: false, message: "Invalid reset code" }
+  }
+
+  // Don't delete immediately for password reset - allow one more verification during actual reset
+  return { success: true, message: "Reset code verified successfully" }
 }

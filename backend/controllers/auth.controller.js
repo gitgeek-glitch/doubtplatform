@@ -1,7 +1,15 @@
 import jwt from "jsonwebtoken"
 import User from "../models/User.model.js"
 import { cache } from "../server.js"
-import { generateOTP, sendOTP, storeOTP, verifyOTP } from "../services/emailService.js"
+import {
+  generateOTP,
+  sendOTP,
+  sendPasswordResetOTP,
+  storeOTP,
+  verifyOTP,
+  storePasswordResetOTP,
+  verifyPasswordResetOTP as verifyPasswordResetOTPService,
+} from "../services/emailService.js"
 
 const clearCache = (pattern) => {
   const keys = cache.keys()
@@ -38,10 +46,8 @@ export const sendVerificationCode = async (req, res) => {
     const otp = generateOTP()
     console.log(`Generated OTP for ${email}: ${otp}`)
 
-    // Always store the OTP first
     storeOTP(email, otp)
 
-    // Check if email credentials are configured
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.log("Email credentials not configured, returning OTP for development")
       return res.status(200).json({
@@ -63,7 +69,6 @@ export const sendVerificationCode = async (req, res) => {
     } catch (emailError) {
       console.error("Email service error:", emailError)
 
-      // Return success with development OTP for testing
       res.status(200).json({
         message: "Email service temporarily unavailable. Use development mode.",
         success: true,
@@ -108,6 +113,194 @@ export const verifyEmail = async (req, res) => {
     console.error("Email verification error:", error)
     res.status(500).json({
       message: "Email verification failed. Please try again.",
+      success: false,
+    })
+  }
+}
+
+export const sendPasswordResetCode = async (req, res) => {
+  try {
+    const { email } = req.body
+
+    if (!email) {
+      return res.status(400).json({
+        message: "Email is required",
+        success: false,
+      })
+    }
+
+    if (!(email.endsWith(".ac.in") || email.endsWith(".edu"))) {
+      return res.status(400).json({
+        message: "Please use your college email ending with .ac.in",
+        success: false,
+      })
+    }
+
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(400).json({
+        message: "No account found with this email address",
+        success: false,
+      })
+    }
+
+    const otp = generateOTP()
+    console.log(`Generated password reset OTP for ${email}: ${otp}`)
+
+    storePasswordResetOTP(email, otp)
+
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.log("Email credentials not configured, returning OTP for development")
+      return res.status(200).json({
+        message: "Email service not configured. Using development mode.",
+        success: true,
+        devMode: true,
+        otp: process.env.NODE_ENV === "development" ? otp : undefined,
+      })
+    }
+
+    try {
+      await sendPasswordResetOTP(email, otp)
+      console.log(`Password reset OTP sent successfully to ${email}`)
+
+      res.status(200).json({
+        message: "Password reset code sent to your email",
+        success: true,
+      })
+    } catch (emailError) {
+      console.error("Email service error:", emailError)
+
+      res.status(200).json({
+        message: "Email service temporarily unavailable. Use development mode.",
+        success: true,
+        devMode: true,
+        otp: process.env.NODE_ENV === "development" ? otp : undefined,
+      })
+    }
+  } catch (error) {
+    console.error("Send password reset error:", error)
+    res.status(500).json({
+      message: "Internal server error. Please try again later.",
+      success: false,
+    })
+  }
+}
+
+export const verifyPasswordResetOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        message: "Email and OTP are required",
+        success: false,
+      })
+    }
+
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(400).json({
+        message: "No account found with this email address",
+        success: false,
+      })
+    }
+
+    const verification = verifyPasswordResetOTPService(email, otp)
+
+    if (!verification.success) {
+      return res.status(400).json({
+        message: verification.message,
+        success: false,
+      })
+    }
+
+    res.status(200).json({
+      message: "Reset code verified successfully",
+      success: true,
+    })
+  } catch (error) {
+    console.error("Password reset verification error:", error)
+    res.status(500).json({
+      message: "Password reset verification failed. Please try again.",
+      success: false,
+    })
+  }
+}
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        message: "Email, OTP, and new password are required",
+        success: false,
+      })
+    }
+
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(400).json({
+        message: "No account found with this email address",
+        success: false,
+      })
+    }
+
+    // Verify the OTP one more time before resetting password
+    const verification = verifyPasswordResetOTPService(email, otp)
+    if (!verification.success) {
+      return res.status(400).json({
+        message: verification.message,
+        success: false,
+      })
+    }
+
+    // Validate password strength
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters long",
+        success: false,
+      })
+    }
+
+    if (!/[A-Z]/.test(newPassword)) {
+      return res.status(400).json({
+        message: "Password must contain at least one uppercase letter",
+        success: false,
+      })
+    }
+
+    if (!/[a-z]/.test(newPassword)) {
+      return res.status(400).json({
+        message: "Password must contain at least one lowercase letter",
+        success: false,
+      })
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+      return res.status(400).json({
+        message: "Password must contain at least one number",
+        success: false,
+      })
+    }
+
+    // Update the user's password
+    user.password = newPassword
+    await user.save()
+
+    // Clear user cache
+    clearCache(`user_${user._id}`)
+
+    console.log(`Password reset successfully for user: ${email}`)
+
+    res.status(200).json({
+      message: "Password reset successfully",
+      success: true,
+    })
+  } catch (error) {
+    console.error("Password reset error:", error)
+    res.status(500).json({
+      message: "Password reset failed. Please try again.",
       success: false,
     })
   }

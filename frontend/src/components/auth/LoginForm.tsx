@@ -1,11 +1,14 @@
-import React, { useState } from "react"
+"use client"
+
+import type React from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { loginUser } from "@/redux/thunks/authThunks"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2 } from "lucide-react"
+import { Loader2, Eye, EyeOff } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -13,9 +16,10 @@ interface LoginFormProps {
   isLoading: boolean
   setLocalLoading: (loading: boolean) => void
   onSwitchTab: () => void
+  onForgotPassword: () => void
 }
 
-export default function LoginForm({ isLoading, setLocalLoading, onSwitchTab }: LoginFormProps) {
+export default function LoginForm({ isLoading, setLocalLoading, onSwitchTab, onForgotPassword }: LoginFormProps) {
   const dispatch = useAppDispatch()
   const { error } = useAppSelector((state) => state.auth)
   const navigate = useNavigate()
@@ -27,6 +31,7 @@ export default function LoginForm({ isLoading, setLocalLoading, onSwitchTab }: L
   })
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -40,7 +45,7 @@ export default function LoginForm({ isLoading, setLocalLoading, onSwitchTab }: L
       errors.email = "Email is required"
     } else if (!/\S+@\S+\.\S+/.test(loginData.email)) {
       errors.email = "Email is invalid"
-    }else if (!(loginData.email.endsWith(".ac.in") || loginData.email.endsWith(".edu"))) {
+    } else if (!(loginData.email.endsWith(".ac.in") || loginData.email.endsWith(".edu"))) {
       errors.email = "Please use your college email (ending with .ac.in)"
     }
 
@@ -115,22 +120,44 @@ export default function LoginForm({ isLoading, setLocalLoading, onSwitchTab }: L
       <div className="auth-field">
         <div className="flex items-center justify-between">
           <Label htmlFor="password">Password</Label>
-          {/* <Button variant="link" className="p-0 h-auto text-xs text-teal-400">
+          <Button
+            type="button"
+            variant="link"
+            className="p-0 h-auto text-xs text-teal-400 hover:text-teal-300"
+            onClick={onForgotPassword}
+            disabled={isLoading}
+          >
             Forgot password?
-          </Button> */}
+          </Button>
         </div>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          placeholder="••••••••"
-          value={loginData.password}
-          onChange={handleLoginChange}
-          className={cn("auth-input", validationErrors.password && "auth-input-error")}
-          required
-          autoComplete="current-password"
-          disabled={isLoading}
-        />
+        <div className="relative">
+          <Input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            placeholder="••••••••"
+            value={loginData.password}
+            onChange={handleLoginChange}
+            className={cn("auth-input pr-10", validationErrors.password && "auth-input-error")}
+            required
+            autoComplete="current-password"
+            disabled={isLoading}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+            onClick={() => setShowPassword(!showPassword)}
+            disabled={isLoading}
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+        </div>
         {validationErrors.password && <p className="auth-error-message">{validationErrors.password}</p>}
       </div>
 
@@ -150,12 +177,7 @@ export default function LoginForm({ isLoading, setLocalLoading, onSwitchTab }: L
       <div className="auth-footer">
         <p>
           Don't have an account?{" "}
-          <Button
-            variant="link"
-            className="auth-link p-0"
-            onClick={onSwitchTab}
-            disabled={isLoading}
-          >
+          <Button variant="link" className="auth-link p-0" onClick={onSwitchTab} disabled={isLoading}>
             Register now
           </Button>
         </p>

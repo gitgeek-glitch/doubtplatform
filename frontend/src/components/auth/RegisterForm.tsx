@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from "react"
+"use client"
+
+import type React from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { registerUser } from "@/redux/thunks/authThunks"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Mail, CheckCircle } from "lucide-react"
+import { Loader2, Mail, CheckCircle, Eye, EyeOff } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import PasswordCriteria from "./PasswordCriteria"
@@ -38,11 +41,13 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
     isVerifying: false,
     isSendingCode: false,
     canResend: false,
-    resendTimer: 0
+    resendTimer: 0,
   })
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [passwordFocused, setPasswordFocused] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [passwordCriteria, setPasswordCriteria] = useState({
     length: false,
     uppercase: false,
@@ -63,21 +68,22 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
   }, [registerData.password])
 
   useEffect(() => {
-    const isValidEmail = registerData.email &&
-    /\S+@\S+\.\S+/.test(registerData.email) &&
-    (registerData.email.endsWith(".ac.in") || registerData.email.endsWith(".edu"));
-    
-    setEmailVerification(prev => ({
+    const isValidEmail =
+      registerData.email &&
+      /\S+@\S+\.\S+/.test(registerData.email) &&
+      (registerData.email.endsWith(".ac.in") || registerData.email.endsWith(".edu"))
+
+    setEmailVerification((prev) => ({
       ...prev,
-      isEmailValid: Boolean(isValidEmail)
+      isEmailValid: Boolean(isValidEmail),
     }))
 
     if (!isValidEmail) {
-      setEmailVerification(prev => ({
+      setEmailVerification((prev) => ({
         ...prev,
         isVerificationSent: false,
         isEmailVerified: false,
-        otp: ""
+        otp: "",
       }))
     }
   }, [registerData.email])
@@ -86,15 +92,15 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
     let interval: NodeJS.Timeout
     if (emailVerification.resendTimer > 0) {
       interval = setInterval(() => {
-        setEmailVerification(prev => ({
+        setEmailVerification((prev) => ({
           ...prev,
-          resendTimer: prev.resendTimer - 1
+          resendTimer: prev.resendTimer - 1,
         }))
       }, 1000)
     } else if (emailVerification.resendTimer === 0 && emailVerification.isVerificationSent) {
-      setEmailVerification(prev => ({
+      setEmailVerification((prev) => ({
         ...prev,
-        canResend: true
+        canResend: true,
       }))
     }
 
@@ -111,7 +117,7 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target
     if (value.length <= 6 && /^\d*$/.test(value)) {
-      setEmailVerification(prev => ({ ...prev, otp: value }))
+      setEmailVerification((prev) => ({ ...prev, otp: value }))
     }
   }
 
@@ -119,19 +125,18 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
     if (!emailVerification.isEmailValid) return
 
     try {
-      setEmailVerification(prev => ({ ...prev, isSendingCode: true }))
-      
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/send-verification`,
-        { email: registerData.email }
-      )
+      setEmailVerification((prev) => ({ ...prev, isSendingCode: true }))
+
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/auth/send-verification`, {
+        email: registerData.email,
+      })
 
       if (response.data.success) {
-        setEmailVerification(prev => ({
+        setEmailVerification((prev) => ({
           ...prev,
           isVerificationSent: true,
           canResend: false,
-          resendTimer: 60
+          resendTimer: 60,
         }))
         toast({
           title: "Verification code sent",
@@ -145,7 +150,7 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
         variant: "destructive",
       })
     } finally {
-      setEmailVerification(prev => ({ ...prev, isSendingCode: false }))
+      setEmailVerification((prev) => ({ ...prev, isSendingCode: false }))
     }
   }
 
@@ -160,20 +165,17 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
     }
 
     try {
-      setEmailVerification(prev => ({ ...prev, isVerifying: true }))
-      
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/verify-email`,
-        { 
-          email: registerData.email,
-          otp: emailVerification.otp 
-        }
-      )
+      setEmailVerification((prev) => ({ ...prev, isVerifying: true }))
+
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/auth/verify-email`, {
+        email: registerData.email,
+        otp: emailVerification.otp,
+      })
 
       if (response.data.success) {
-        setEmailVerification(prev => ({
+        setEmailVerification((prev) => ({
           ...prev,
-          isEmailVerified: true
+          isEmailVerified: true,
         }))
         toast({
           title: "Email verified",
@@ -187,7 +189,7 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
         variant: "destructive",
       })
     } finally {
-      setEmailVerification(prev => ({ ...prev, isVerifying: false }))
+      setEmailVerification((prev) => ({ ...prev, isVerifying: false }))
     }
   }
 
@@ -304,19 +306,22 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
             value={registerData.email}
             onChange={handleRegisterChange}
             className={cn(
-              "auth-input", 
+              "auth-input",
               validationErrors.email && "auth-input-error",
-              emailVerification.isEmailVerified && "border-green-500"
+              emailVerification.isEmailVerified && "border-green-500",
             )}
             required
             disabled={isLoading || emailVerification.isEmailVerified}
           />
-          
+
           {emailVerification.isEmailValid && !emailVerification.isEmailVerified && (
             <Button
               type="button"
               onClick={sendVerificationCode}
-              disabled={emailVerification.isSendingCode || (emailVerification.isVerificationSent && !emailVerification.canResend)}
+              disabled={
+                emailVerification.isSendingCode ||
+                (emailVerification.isVerificationSent && !emailVerification.canResend)
+              }
               className="w-full auth-submit text-white"
             >
               {emailVerification.isSendingCode ? (
@@ -361,16 +366,10 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
                   disabled={emailVerification.isVerifying || emailVerification.otp.length !== 6}
                   className="auth-submit text-white px-6"
                 >
-                  {emailVerification.isVerifying ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Verify"
-                  )}
+                  {emailVerification.isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Enter the 6-digit code sent to your email
-              </p>
+              <p className="text-xs text-muted-foreground">Enter the 6-digit code sent to your email</p>
             </div>
           )}
 
@@ -381,59 +380,86 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
             </div>
           )}
         </div>
-        
+
         {validationErrors.email && <p className="auth-error-message">{validationErrors.email}</p>}
         <p className="auth-hint">Must be your institutional email ending with .ac.in or .edu</p>
       </div>
 
       <div className="auth-field">
         <Label htmlFor="register-password">Password</Label>
-        <Input
-          id="register-password"
-          name="password"
-          type="password"
-          placeholder="••••••••"
-          value={registerData.password}
-          onChange={handleRegisterChange}
-          onFocus={() => setPasswordFocused(true)}
-          onBlur={() => setPasswordFocused(false)}
-          className={cn("auth-input", validationErrors.password && "auth-input-error")}
-          required
-          autoComplete="new-password"
-          disabled={isLoading}
-        />
+        <div className="relative">
+          <Input
+            id="register-password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            placeholder="••••••••"
+            value={registerData.password}
+            onChange={handleRegisterChange}
+            onFocus={() => setPasswordFocused(true)}
+            onBlur={() => setPasswordFocused(false)}
+            className={cn("auth-input pr-10", validationErrors.password && "auth-input-error")}
+            required
+            autoComplete="new-password"
+            disabled={isLoading}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+            onClick={() => setShowPassword(!showPassword)}
+            disabled={isLoading}
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+        </div>
         {validationErrors.password && <p className="auth-error-message">{validationErrors.password}</p>}
 
-        <PasswordCriteria 
-          show={passwordFocused || registerData.password.length > 0}
-          criteria={passwordCriteria}
-        />
+        <PasswordCriteria show={passwordFocused || registerData.password.length > 0} criteria={passwordCriteria} />
       </div>
 
       <div className="auth-field">
         <Label htmlFor="confirm-password">Confirm Password</Label>
-        <Input
-          id="confirm-password"
-          name="confirmPassword"
-          type="password"
-          placeholder="••••••••"
-          value={registerData.confirmPassword}
-          onChange={handleRegisterChange}
-          className={cn("auth-input", validationErrors.confirmPassword && "auth-input-error")}
-          required
-          autoComplete="new-password"
-          disabled={isLoading}
-        />
-        {validationErrors.confirmPassword && (
-          <p className="auth-error-message">{validationErrors.confirmPassword}</p>
-        )}
+        <div className="relative">
+          <Input
+            id="confirm-password"
+            name="confirmPassword"
+            type={showConfirmPassword ? "text" : "password"}
+            placeholder="••••••••"
+            value={registerData.confirmPassword}
+            onChange={handleRegisterChange}
+            className={cn("auth-input pr-10", validationErrors.confirmPassword && "auth-input-error")}
+            required
+            autoComplete="new-password"
+            disabled={isLoading}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            disabled={isLoading}
+          >
+            {showConfirmPassword ? (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+        </div>
+        {validationErrors.confirmPassword && <p className="auth-error-message">{validationErrors.confirmPassword}</p>}
       </div>
 
       {error && <p className="auth-error-message">{error}</p>}
 
-      <Button 
-        type="submit" 
-        className="auth-submit text-white" 
+      <Button
+        type="submit"
+        className="auth-submit text-white"
         disabled={isLoading || !emailVerification.isEmailVerified}
       >
         {isLoading ? (
@@ -449,12 +475,7 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
       <div className="auth-footer">
         <p>
           Already have an account?{" "}
-          <Button
-            variant="link"
-            className="auth-link p-0"
-            onClick={onSwitchTab}
-            disabled={isLoading}
-          >
+          <Button variant="link" className="auth-link p-0" onClick={onSwitchTab} disabled={isLoading}>
             Sign in
           </Button>
         </p>
