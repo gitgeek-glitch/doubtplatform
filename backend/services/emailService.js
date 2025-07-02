@@ -50,20 +50,20 @@ export const sendOTP = async (email, otp) => {
 
   try {
     const mailOptions = {
-      from: `"DoubtSolve" <${process.env.EMAIL_USER}>`,
+      from: `"CollegeQuora" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: "DoubtSolve - Email Verification Code",
+      subject: "CollegeQuora - Email Verification Code",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">DoubtSolve</h1>
+            <h1 style="color: white; margin: 0; font-size: 28px;">CollegeQuora</h1>
             <p style="color: white; margin: 10px 0 0 0; opacity: 0.9;">Your College Doubt-Solving Platform</p>
           </div>
           
           <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; margin-top: 20px;">
             <h2 style="color: #333; margin-top: 0;">Email Verification</h2>
             <p style="color: #666; font-size: 16px; line-height: 1.5;">
-              Thank you for registering with DoubtSolve! Please use the verification code below to complete your registration:
+              Thank you for registering with CollegeQuora! Please use the verification code below to complete your registration:
             </p>
             
             <div style="background: white; border: 2px dashed #667eea; padding: 20px; margin: 25px 0; text-align: center; border-radius: 8px;">
@@ -77,12 +77,12 @@ export const sendOTP = async (email, otp) => {
           
           <div style="text-align: center; margin-top: 20px;">
             <p style="color: #999; font-size: 12px;">
-              © 2025 DoubtSolve. All rights reserved.
+              © 2025 CollegeQuora. All rights reserved.
             </p>
           </div>
         </div>
       `,
-      text: `Your DoubtSolve verification code is: ${otp}. This code will expire in 10 minutes.`,
+      text: `Your CollegeQuora verification code is: ${otp}. This code will expire in 10 minutes.`,
     }
 
     const result = await transporter.sendMail(mailOptions)
