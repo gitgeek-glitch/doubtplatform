@@ -172,7 +172,7 @@ export default function Navbar() {
       </div>
 
       {mobileMenuOpen && (
-        <div className="navbar-mobile-menu">
+        <div className="navbar-mobile-menu bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
           <div className="navbar-mobile-container">
             {isAuthenticated && isHomePage && (
               <form onSubmit={handleSearch} className="navbar-mobile-search">
@@ -189,16 +189,18 @@ export default function Navbar() {
             )}
 
             <div className="flex flex-col gap-3">
-              <Button
-                variant="default"
-                className="navbar-mobile-button text-white"
-                onClick={() => {
-                  navigate("/ask")
-                  setMobileMenuOpen(false)
-                }}
-              >
-                Ask Question
-              </Button>
+              {isAuthenticated && (
+                <Button
+                  variant="default"
+                  className="navbar-mobile-button text-white"
+                  onClick={() => {
+                    navigate("/ask")
+                    setMobileMenuOpen(false)
+                  }}
+                >
+                  Ask Question
+                </Button>
+              )}
 
               {isAuthenticated ? (
                 <>
@@ -210,8 +212,8 @@ export default function Navbar() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <p className="font-medium text-white">{user?.name}</p>
-                      <p className="text-xs text-gray-400">{user?.email}</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{user?.name}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">{user?.email}</p>
                     </div>
                   </div>
 

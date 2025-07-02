@@ -317,7 +317,7 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
               type="button"
               onClick={sendVerificationCode}
               disabled={emailVerification.isSendingCode || (emailVerification.isVerificationSent && !emailVerification.canResend)}
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              className="w-full auth-submit text-white"
             >
               {emailVerification.isSendingCode ? (
                 <>
@@ -359,7 +359,7 @@ export default function RegisterForm({ isLoading, setLocalLoading, onSwitchTab }
                   type="button"
                   onClick={verifyEmailCode}
                   disabled={emailVerification.isVerifying || emailVerification.otp.length !== 6}
-                  className="bg-green-600 hover:bg-green-700 px-6"
+                  className="auth-submit text-white px-6"
                 >
                   {emailVerification.isVerifying ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
