@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { logout } from "@/redux/slices/authSlice"
@@ -45,12 +45,52 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
+  // Debounced search function to avoid too many API calls
+  const debounceSearch = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout
+      return (query: string) => {
+        clearTimeout(timeoutId)
+        timeoutId = setTimeout(() => {
+          if (query.trim()) {
+            navigate(`/home?search=${encodeURIComponent(query)}`)
+          } else {
+            // If search is empty, navigate back to home without search params
+            navigate("/home")
+          }
+        }, 300) // 300ms debounce delay
+      }
+    })(),
+    [navigate]
+  )
+
+  // Handle search input change with dynamic filtering
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value
+    setSearchQuery(query)
+    
+    // Trigger dynamic search with debouncing
+    debounceSearch(query)
+  }
+
+  // Handle form submission (when user presses Enter)
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
       navigate(`/home?search=${encodeURIComponent(searchQuery)}`)
       setMobileMenuOpen(false)
+    } else {
+      navigate("/home")
     }
+  }
+
+  // Handle mobile search input change
+  const handleMobileSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value
+    setSearchQuery(query)
+    
+    // Trigger dynamic search with debouncing for mobile too
+    debounceSearch(query)
   }
 
   const toggleTheme = () => {
@@ -75,6 +115,22 @@ export default function Navbar() {
     navigate("/")
   }
 
+  // Clear search when navigating away from home page
+  useEffect(() => {
+    if (!isHomePage) {
+      setSearchQuery("")
+    }
+  }, [isHomePage])
+
+  // Initialize search query from URL params
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search)
+    const searchParam = urlParams.get('search')
+    if (searchParam) {
+      setSearchQuery(searchParam)
+    }
+  }, [location.search])
+
   return (
     <header className={cn("navbar", scrolled ? "navbar-scrolled" : "navbar-transparent")}>
       <div className="navbar-container">
@@ -92,10 +148,22 @@ export default function Navbar() {
                   placeholder="Search questions..."
                   className="navbar-search-input"
                   value={searchQuery}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                  onChange={handleSearchChange}
                   autoComplete="off"
                 />
                 <Search className="navbar-search-icon" />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="absolute right-8 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    onClick={() => {
+                      setSearchQuery("")
+                      navigate("/home")
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </form>
           )}
@@ -118,7 +186,7 @@ export default function Navbar() {
                     <div className="navbar-avatar-container">
                       <Avatar className="h-8 w-8 cursor-pointer">
                         <AvatarImage src={avatarSrc || ""} alt={user?.name} />
-                        <AvatarFallback className="bg-gradient-to-br">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                           {user?.name?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -128,7 +196,7 @@ export default function Navbar() {
                     <div className="navbar-dropdown-user">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={avatarSrc || ""} alt={user?.name} />
-                        <AvatarFallback className="bg-gradient-to-br">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                           {user?.name?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -172,19 +240,33 @@ export default function Navbar() {
       </div>
 
       {mobileMenuOpen && (
-        <div className="navbar-mobile-menu bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
-          <div className="navbar-mobile-container">
+        <div className="navbar-mobile-menu bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg">
+          <div className="navbar-mobile-container bg-white dark:bg-gray-900 p-4">
             {isAuthenticated && isHomePage && (
-              <form onSubmit={handleSearch} className="navbar-mobile-search">
-                <Input
-                  type="search"
-                  placeholder="Search questions..."
-                  className="navbar-mobile-search-input"
-                  value={searchQuery}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-                  autoComplete="off"
-                />
-                <Search className="navbar-search-icon" />
+              <form onSubmit={handleSearch} className="navbar-mobile-search mb-4">
+                <div className="relative">
+                  <Input
+                    type="search"
+                    placeholder="Search questions..."
+                    className="navbar-mobile-search-input pr-10"
+                    value={searchQuery}
+                    onChange={handleMobileSearchChange}
+                    autoComplete="off"
+                  />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      onClick={() => {
+                        setSearchQuery("")
+                        navigate("/home")
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </form>
             )}
 
@@ -192,7 +274,7 @@ export default function Navbar() {
               {isAuthenticated && (
                 <Button
                   variant="default"
-                  className="navbar-mobile-button text-white"
+                  className="navbar-mobile-button text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
                   onClick={() => {
                     navigate("/ask")
                     setMobileMenuOpen(false)
@@ -204,10 +286,10 @@ export default function Navbar() {
 
               {isAuthenticated ? (
                 <>
-                  <div className="navbar-mobile-user">
+                  <div className="navbar-mobile-user bg-gray-50 dark:bg-gray-800 p-3 rounded-lg flex items-center gap-3">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={avatarSrc || ""} alt={user?.name} />
-                      <AvatarFallback className="bg-gradient-to-br">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                         {user?.name?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -217,10 +299,10 @@ export default function Navbar() {
                     </div>
                   </div>
 
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 space-y-1 bg-gray-50 dark:bg-gray-800 p-2 rounded-lg">
                     <Button
                       variant="ghost"
-                      className="navbar-mobile-menu-item"
+                      className="navbar-mobile-menu-item w-full justify-start text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                       onClick={() => {
                         navigate(`/profile/${user?._id}`)
                         setMobileMenuOpen(false)
@@ -231,7 +313,7 @@ export default function Navbar() {
                     </Button>
                     <Button
                       variant="ghost"
-                      className="navbar-mobile-menu-item"
+                      className="navbar-mobile-menu-item w-full justify-start text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                       onClick={() => {
                         dispatch(logout())
                         setMobileMenuOpen(false)
@@ -246,7 +328,7 @@ export default function Navbar() {
               ) : (
                 <Button
                   variant="default"
-                  className="navbar-mobile-button text-white"
+                  className="navbar-mobile-button text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
                   onClick={() => {
                     navigate("/auth")
                     setMobileMenuOpen(false)
@@ -256,8 +338,12 @@ export default function Navbar() {
                 </Button>
               )}
 
-              <div className="mt-auto">
-                <Button variant="ghost" className="navbar-mobile-menu-item" onClick={toggleTheme}>
+              <div className="mt-auto bg-gray-50 dark:bg-gray-800 p-2 rounded-lg">
+                <Button 
+                  variant="ghost" 
+                  className="navbar-mobile-menu-item w-full justify-start text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" 
+                  onClick={toggleTheme}
+                >
                   {theme === "dark" ? (
                     <>
                       <Sun className="mr-3 h-5 w-5 text-amber-400" />
